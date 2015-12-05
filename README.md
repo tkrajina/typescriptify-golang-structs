@@ -13,7 +13,6 @@ If the `Person` structs contain a reference to the `Address` struct, then you do
 Example input structs:
 
     type Address struct {
-        // Used in html
         Duration float64 `json:"duration"`
         Text1    string  `json:"text,omitempty"`
         // Ignored:
