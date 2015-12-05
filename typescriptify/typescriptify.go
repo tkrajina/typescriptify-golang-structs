@@ -120,7 +120,7 @@ func loadCustomCode(fileName string) (map[string]string, error) {
 			currentName = strings.Replace(strings.Replace(trimmedLine, "//[", "", -1), ":]", "", -1)
 			currentValue = ""
 		} else if trimmedLine == "//[end]" {
-			result[currentName] = currentValue
+			result[currentName] = strings.TrimRight(currentValue, " \t\r\n")
 			currentName = ""
 			currentValue = ""
 		} else if len(currentName) > 0 {
@@ -215,7 +215,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 
 	if customCode != nil {
 		code := customCode[entityName]
-		result += this.indent + "//[" + entityName + ":]\n" + code + "\n" + this.indent + "//[end]\n"
+		result += this.indent + "//[" + entityName + ":]\n" + code + "\n\n" + this.indent + "//[end]\n"
 	}
 
 	result += "}"
