@@ -96,7 +96,7 @@ class Person {
 func TestWithPrefixes(t *testing.T) {
 	converter := New()
 
-	converter.Prefix("test_")
+	converter.Prefix = "test_"
 
 	converter.Add(Address{})
 	converter.Add(Dummy{})

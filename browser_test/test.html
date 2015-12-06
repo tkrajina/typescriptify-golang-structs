@@ -1,0 +1,58 @@
+<html>
+<head>
+<title>Test</title>
+<script src="example_output.js"></script>
+<script>
+init = function() {
+    var person = Person.fromJSON({
+            "name": "Ovo Ono",
+            "nicknames": ["aaa", "bbb"],
+            "personal_info": {
+                    "hobby": ["1", "2"],
+                    "pet_name": "nera"
+            },
+            "addresses": [
+                    { "city": "aaa", "number": 13 },
+                    { "city": "bbb", "number": 14 }
+            ]});
+    if (person.getInfo() != "name:Ovo Ono") {
+        alert("Person method not there");
+        return;
+    }
+    if (person.personal_info.hobby.length != 2) {
+        alert("No hobbies found");
+        return;
+    }
+    if (person.addresses.length != 2) {
+        alert("No addresses found");
+        return;
+    }
+    if (person.addresses[1].getAddressString() != "bbb 14") {
+        alert("Address methodincorrect");
+        return;
+    }
+    alert("OK");
+
+    Person.fromJSON({
+            "name": "Ovo Ono",
+            "nicknames": ["aaa", "bbb"],
+            "personal_info": {
+                    "hobby": ["1", "2"],
+                    "pet_name": "nera"
+            }});
+    alert("OK");
+
+    var person = Person.fromJSON({
+            "name": "Ovo Ono",
+            "nicknames": ["aaa", "bbb"],
+            "personal_info": {}
+    });
+    alert("OK");
+};
+</script>
+</head>
+<body onload="init()">
+    <h1>Test</h1>
+    <h2>OK?<h2>
+</body>
+</html>
