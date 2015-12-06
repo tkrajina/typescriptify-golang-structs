@@ -34,17 +34,17 @@ func TestTypescriptifyWithTypes(t *testing.T) {
 	converter.AddType(reflect.TypeOf(Person{}))
 
 	desiredResult := `class Dummy {
-        something : string;
+        something: string;
 }
 class Address {
-        duration : number;
-        text : string;
+        duration: number;
+        text: string;
 }
 class Person {
-        name : string;
-        nicknames : string[];
-        addresses : Address[];
-        a : Dummy;
+        name: string;
+        nicknames: string[];
+        addresses: Address[];
+        a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -56,17 +56,17 @@ func TestTypescriptifyWithInstances(t *testing.T) {
 	converter.Add(Dummy{})
 
 	desiredResult := `class Dummy {
-        something : string;
+        something: string;
 }
 class Address {
-        duration : number;
-        text : string;
+        duration: number;
+        text: string;
 }
 class Person {
-        name : string;
-        nicknames : string[];
-        addresses : Address[];
-        a : Dummy;
+        name: string;
+        nicknames: string[];
+        addresses: Address[];
+        a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -78,17 +78,17 @@ func TestTypescriptifyWithDoubleClasses(t *testing.T) {
 	converter.AddType(reflect.TypeOf(Person{}))
 
 	desiredResult := `class Dummy {
-        something : string;
+        something: string;
 }
 class Address {
-        duration : number;
-        text : string;
+        duration: number;
+        text: string;
 }
 class Person {
-        name : string;
-        nicknames : string[];
-        addresses : Address[];
-        a : Dummy;
+        name: string;
+        nicknames: string[];
+        addresses: Address[];
+        a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -102,11 +102,11 @@ func TestWithPrefixes(t *testing.T) {
 	converter.Add(Dummy{})
 
 	desiredResult := `class test_Address {
-        duration : number;
-        text : string;
+        duration: number;
+        text: string;
 }
 class test_Dummy {
-        something : string;
+        something: string;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -131,7 +131,7 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string)
 				line1 := strings.Trim(lines1[i], " \t\r\n")
 				line2 := strings.Trim(lines2[i], " \t\r\n")
 				if line1 != line2 {
-					os.Stderr.WriteString(fmt.Sprintf("%d. line don't match: `%s` != `%s`\n", line1, line2))
+					os.Stderr.WriteString(fmt.Sprintf("%d. line don't match: `%s` != `%s`\n", i+1, line1, line2))
 					os.Stderr.WriteString(fmt.Sprintf("Expected:\n%s\n\nGot:\n%s\n", desiredResult, typeScriptCode))
 					t.Fail()
 				}
