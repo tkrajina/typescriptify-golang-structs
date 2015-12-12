@@ -188,9 +188,9 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 
 	result += builder.fields
 	if this.FromJSONMethod {
-		result += fmt.Sprintf("%sstatic fromJSON(json: any) {\n", this.Indent)
+		result += fmt.Sprintf("%sstatic createFrom(source: any) {\n", this.Indent)
 		result += fmt.Sprintf("%s%svar result = new %s();\n", this.Indent, this.Indent, entityName)
-		result += builder.fromJSONMethodBody
+		result += builder.createFromMethodBody
 		result += fmt.Sprintf("%s%sreturn result;\n", this.Indent, this.Indent)
 		result += fmt.Sprintf("%s}\n", this.Indent)
 	}
@@ -208,17 +208,17 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 }
 
 type TypeScriptClassBuilder struct {
-	types              map[reflect.Kind]string
-	indent             string
-	fields             string
-	fromJSONMethodBody string
+	types                map[reflect.Kind]string
+	indent               string
+	fields               string
+	createFromMethodBody string
 }
 
 func (this *TypeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
 	if typeScriptType, ok := this.types[kind]; ok {
 		if len(fieldName) > 0 {
 			this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, typeScriptType)
-			this.fromJSONMethodBody += fmt.Sprintf("%s%sresult.%s = json[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
+			this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
 			return nil
 		}
 	}
@@ -229,7 +229,7 @@ func (this *TypeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 	if typeScriptType, ok := this.types[kind]; ok {
 		if len(fieldName) > 0 {
 			this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, typeScriptType)
-			this.fromJSONMethodBody += fmt.Sprintf("%s%sresult.%s = json[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
+			this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
 			return nil
 		}
 	}
@@ -238,12 +238,12 @@ func (this *TypeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 
 func (this *TypeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
-	this.fromJSONMethodBody += fmt.Sprintf("%s%sresult.%s = %s.fromJSON(json[\"%s\"]);\n", this.indent, this.indent, fieldName, fieldType, fieldName)
+	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = %s.source(json[\"%s\"]);\n", this.indent, this.indent, fieldName, fieldType, fieldName)
 }
 
 func (this *TypeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, fieldType)
-	this.fromJSONMethodBody += fmt.Sprintf("%s%sif (json[\"%s\"]) {\n", this.indent, this.indent, fieldName)
-	this.fromJSONMethodBody += fmt.Sprintf("%s%s%sresult.%s = json[\"%s\"].map(function(element) { return %s.fromJSON(element); });\n", this.indent, this.indent, this.indent, fieldName, fieldName, fieldType)
-	this.fromJSONMethodBody += fmt.Sprintf("%s%s}\n", this.indent, this.indent)
+	this.createFromMethodBody += fmt.Sprintf("%s%sif (source[\"%s\"]) {\n", this.indent, this.indent, fieldName)
+	this.createFromMethodBody += fmt.Sprintf("%s%s%sresult.%s = source[\"%s\"].map(function(element) { return %s.fromJSON(element); });\n", this.indent, this.indent, this.indent, fieldName, fieldName, fieldType)
+	this.createFromMethodBody += fmt.Sprintf("%s%s}\n", this.indent, this.indent)
 }
