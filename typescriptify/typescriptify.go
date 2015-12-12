@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type TypeScriptify struct {
@@ -14,6 +15,7 @@ type TypeScriptify struct {
 	Suffix           string
 	Indent           string
 	CreateFromMethod bool
+	BackupExtension  string // If empty no backup
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
@@ -25,6 +27,7 @@ type TypeScriptify struct {
 func New() *TypeScriptify {
 	result := new(TypeScriptify)
 	result.Indent = "\t"
+	result.BackupExtension = "backup"
 
 	types := make(map[reflect.Kind]string)
 
@@ -108,7 +111,40 @@ func loadCustomCode(fileName string) (map[string]string, error) {
 	return result, nil
 }
 
+func (this TypeScriptify) backup(fileName string) error {
+	fileIn, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer fileIn.Close()
+
+	bytes, err := ioutil.ReadAll(fileIn)
+	if err != nil {
+		return err
+	}
+
+	fileOut, err := os.Create(fmt.Sprintf("%s-%s.%s", fileName, time.Now().Format("2006-01-02 15:04:05.99"), this.BackupExtension))
+	if err != nil {
+		return err
+	}
+	defer fileOut.Close()
+
+	_, err = fileOut.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (this TypeScriptify) ConvertToFile(fileName string) error {
+	if len(this.BackupExtension) > 0 {
+		err := this.backup(fileName)
+		if err != nil {
+			return err
+		}
+	}
+
 	customCode, err := loadCustomCode(fileName)
 	if err != nil {
 		return err
