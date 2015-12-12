@@ -47,7 +47,7 @@ Generated TypeScript:
             a : Dummy;
     }
 
-In TypeScript you can just cast your JSON in any of those models:
+In TypeScript you can just cast your javascript object in any of those models:
 
     var person = <Person> {"name":"Me myself","nicknames":["aaa", "bbb"]};
     console.log(person.name);
@@ -69,7 +69,7 @@ Any custom code can be added to Typescript models:
 
 The lines between `//[Address:]` and `//[end]` will be left intact after `ConvertToFile()`.
 
-If your custom code contain methods, then just casting yout JSON to the target class (with `<Person> {...}`) won't work because the casted object won't contain your methods.
+If your custom code contain methods, then just casting yout object to the target class (with `<Person> {...}`) won't work because the casted object won't contain your methods.
 In that case, you can configure the converter to create static `createFrom` methods:
 
     converter := typescriptify.New()
