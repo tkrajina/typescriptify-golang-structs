@@ -123,7 +123,7 @@ func (this TypeScriptify) backup(fileName string) error {
 		return err
 	}
 
-	fileOut, err := os.Create(fmt.Sprintf("%s-%s.%s", fileName, time.Now().Format("2006-01-02 15:04:05.99"), this.BackupExtension))
+	fileOut, err := os.Create(fmt.Sprintf("%s-%s.%s", fileName, time.Now().Format("2006-01-02T15:04:05.99"), this.BackupExtension))
 	if err != nil {
 		return err
 	}
