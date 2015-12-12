@@ -177,7 +177,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 
 	entityName := fmt.Sprintf("%s%s%s", this.Prefix, this.Suffix, typeOf.Name())
 	result := fmt.Sprintf("class %s {\n", entityName)
-	builder := TypeScriptClassBuilder{
+	builder := typeScriptClassBuilder{
 		types:  this.types,
 		indent: this.Indent,
 	}
@@ -243,14 +243,14 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	return result, nil
 }
 
-type TypeScriptClassBuilder struct {
+type typeScriptClassBuilder struct {
 	types                map[reflect.Kind]string
 	indent               string
 	fields               string
 	createFromMethodBody string
 }
 
-func (this *TypeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
+func (this *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
 	if typeScriptType, ok := this.types[kind]; ok {
 		if len(fieldName) > 0 {
 			this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, typeScriptType)
@@ -261,7 +261,7 @@ func (this *TypeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType str
 	return errors.New(fmt.Sprintf("Cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
-func (this *TypeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind) error {
+func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind) error {
 	if typeScriptType, ok := this.types[kind]; ok {
 		if len(fieldName) > 0 {
 			this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, typeScriptType)
@@ -272,12 +272,12 @@ func (this *TypeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 	return errors.New("Cannot find type for " + fieldType)
 }
 
-func (this *TypeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
+func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldType, fieldName)
 }
 
-func (this *TypeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
+func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, fieldType)
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, fieldType)
 }
