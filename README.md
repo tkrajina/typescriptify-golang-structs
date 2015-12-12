@@ -49,10 +49,10 @@ Generated TypeScript:
 
 In TypeScript you can just cast your JSON in any of those models:
 
-    var json = <Person> {"name":"Me myself","nicknames":["aaa", "bbb"]};
-    console.log(json.name);
+    var person = <Person> {"name":"Me myself","nicknames":["aaa", "bbb"]};
+    console.log(person.name);
     // The TypeScript compiler will throw an error for this line
-    console.log(json.something);
+    console.log(person.something);
 
 Any custom code can be added to Typescript models:
 
@@ -68,6 +68,43 @@ Any custom code can be added to Typescript models:
     }
 
 The lines between `//[Address:]` and `//[end]` will be left intact after `ConvertToFile()`.
+
+If your custom code contain methods, then just casting yout JSON to the target class (with `<Person> {...}`) won't work because the casted object won't contain your methods.
+In that case, you can configure the converter to create static `createFrom` methods:
+
+    converter := typescriptify.New()
+	converter.CreateFromMethod = true
+	converter.Indent = "    "
+
+The TypeScript code will now be:
+
+    class Person {
+        name: string;
+        personal_info: PersonalInfo;
+        nicknames: string[];
+        addresses: Address[];
+
+        static createFrom(source: any) {
+            var result = new Person();
+            result.name = source["name"];
+            result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
+            result.nicknames = source["nicknames"];
+            result.addresses = source["addresses"] ? source["addresses"].map(function(element) { return Address.createFrom(element); }) : null;
+            return result;
+        }
+
+        //[Person:]
+
+        yourMethod = () => {
+            return "name:" + this.name;
+        }
+
+        //[end]
+    }
+
+And now, instead of casting to `Person` you need to:
+
+    var person = Person.createFrom({"name":"Me myself","nicknames":["aaa", "bbb"]});
 
 If you use golang JSON structs as responses from your API, you may want to have a common prefix for all the generated models:
 
