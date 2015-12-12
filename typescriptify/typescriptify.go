@@ -10,10 +10,10 @@ import (
 )
 
 type TypeScriptify struct {
-	Prefix         string
-	Suffix         string
-	Indent         string
-	FromJSONMethod bool
+	Prefix           string
+	Suffix           string
+	Indent           string
+	CreateFromMethod bool
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
@@ -187,12 +187,12 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	}
 
 	result += builder.fields
-	if this.FromJSONMethod {
-		result += fmt.Sprintf("%sstatic createFrom(source: any) {\n", this.Indent)
+	if this.CreateFromMethod {
+		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", this.Indent)
 		result += fmt.Sprintf("%s%svar result = new %s();\n", this.Indent, this.Indent, entityName)
 		result += builder.createFromMethodBody
 		result += fmt.Sprintf("%s%sreturn result;\n", this.Indent, this.Indent)
-		result += fmt.Sprintf("%s}\n", this.Indent)
+		result += fmt.Sprintf("%s}\n\n", this.Indent)
 	}
 
 	if customCode != nil {
@@ -238,12 +238,10 @@ func (this *TypeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 
 func (this *TypeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
-	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = %s.source(json[\"%s\"]);\n", this.indent, this.indent, fieldName, fieldType, fieldName)
+	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldType, fieldName)
 }
 
 func (this *TypeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, fieldType)
-	this.createFromMethodBody += fmt.Sprintf("%s%sif (source[\"%s\"]) {\n", this.indent, this.indent, fieldName)
-	this.createFromMethodBody += fmt.Sprintf("%s%s%sresult.%s = source[\"%s\"].map(function(element) { return %s.fromJSON(element); });\n", this.indent, this.indent, this.indent, fieldName, fieldName, fieldType)
-	this.createFromMethodBody += fmt.Sprintf("%s%s}\n", this.indent, this.indent)
+	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, fieldType)
 }

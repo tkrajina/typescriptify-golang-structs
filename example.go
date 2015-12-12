@@ -23,7 +23,7 @@ type Person struct {
 
 func main() {
 	converter := typescriptify.New()
-	converter.FromJSONMethod = true
+	converter.CreateFromMethod = true
 	converter.Indent = "    "
 
 	converter.Add(Person{})

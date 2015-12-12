@@ -4,7 +4,7 @@
 <script src="example_output.js"></script>
 <script>
 init = function() {
-    var person = Person.fromJSON({
+    var person = Person.createFrom({
             "name": "Ovo Ono",
             "nicknames": ["aaa", "bbb"],
             "personal_info": {
@@ -33,7 +33,7 @@ init = function() {
     }
     alert("OK");
 
-    Person.fromJSON({
+    Person.createFrom({
             "name": "Ovo Ono",
             "nicknames": ["aaa", "bbb"],
             "personal_info": {
@@ -42,10 +42,14 @@ init = function() {
             }});
     alert("OK");
 
-    var person = Person.fromJSON({
+    var person = Person.createFrom({
             "name": "Ovo Ono",
             "nicknames": ["aaa", "bbb"],
             "personal_info": {}
+    });
+    alert("OK");
+
+    var person = Person.createFrom({
     });
     alert("OK");
 };
@@ -53,6 +57,6 @@ init = function() {
 </head>
 <body onload="init()">
     <h1>Test</h1>
-    <h2>OK?<h2>
+    <h2>OK (check browser console for errors)?<h2>
 </body>
 </html>
