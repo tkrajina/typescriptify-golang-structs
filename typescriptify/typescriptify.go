@@ -50,6 +50,9 @@ func New() *TypeScriptify {
 
 	result.types = types
 
+	result.Indent = "    "
+	result.CreateFromMethod = true
+
 	return result
 }
 
