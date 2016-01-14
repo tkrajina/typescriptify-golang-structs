@@ -114,7 +114,11 @@ func loadCustomCode(fileName string) (map[string]string, error) {
 func (this TypeScriptify) backup(fileName string) error {
 	fileIn, err := os.Open(fileName)
 	if err != nil {
-		return err
+		if !os.IsNotExist(err) {
+			return err
+		}
+		// No neet to backup, just return:
+		return nil
 	}
 	defer fileIn.Close()
 
