@@ -16,6 +16,7 @@ const TEMPLATE = `package main
 import (
 	"fmt"
 
+	"{{ .ModelsPackage }}"
 	"github.com/tkrajina/typescriptify-golang-structs/typescriptify"
 )
 
@@ -23,23 +24,39 @@ func main() {
 	t := typescriptify.New()
 {{ range .Structs }}	t.Add({{ . }}{})
 {{ end }}
-	result, err := t.ConvertTo(os.Stdout)
+	err := t.ConvertToFile("{{ .TargetFile }}")
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Println(string(result))
+	fmt.Println("OK")
 }`
 
 type Params struct {
-	Structs []string
+	ModelsPackage string
+	TargetFile    string
+	Structs       []string
 }
 
 func main() {
-	var stringExtension string
-	var structs string
-	flag.StringVar(&structs, "structs", "", "List of (comma-delimited) structs to be typescriptified")
+	var packagePath, target, stringExtension string
+	flag.StringVar(&packagePath, "package", "", "Path of the package with models")
+	flag.StringVar(&target, "target", "", "Target typescript file")
 	flag.StringVar(&stringExtension, "extension", "", "")
 	flag.Parse()
+
+	structs := flag.Args()
+
+	if len(packagePath) == 0 {
+		fmt.Fprintln(os.Stderr, "No package given")
+		os.Exit(1)
+	}
+	if len(target) == 0 {
+		fmt.Fprintln(os.Stderr, "No target file")
+		os.Exit(1)
+	}
+
+	packageParts := strings.Split(packagePath, string(os.PathSeparator))
+	pckg := packageParts[len(packageParts)-1]
 
 	t := template.Must(template.New("").Parse(TEMPLATE))
 
@@ -53,14 +70,14 @@ func main() {
 	defer f.Close()
 
 	structsArr := make([]string, 0)
-	for _, str := range strings.Split(structs, ",") {
+	for _, str := range structs {
 		str = strings.TrimSpace(str)
 		if len(str) > 0 {
-			structsArr = append(structsArr, str)
+			structsArr = append(structsArr, pckg+"."+str)
 		}
 	}
 
-	params := Params{Structs: structsArr}
+	params := Params{Structs: structsArr, ModelsPackage: packagePath, TargetFile: target}
 	err = t.Execute(f, params)
 	handleErr(err)
 
