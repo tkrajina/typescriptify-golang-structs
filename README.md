@@ -4,6 +4,16 @@ Use the commantline tool:
 
     tscriptify -package=package/with/your/models -target=target_ts_file.ts Model1 Model2
 
+Or by using it from your code:
+
+    converter := typescriptify.New()
+    converter.Add(Person{})
+    converter.Add(Dummy{})
+    err := converter.ConvertToFile("ts/models.ts")
+    if err != nil {
+        panic(err.Error())
+    }
+
 ## Models and conversion
 
 If the `Person` structs contain a reference to the `Address` struct, then you don't have to add `Address` explicitly. Only fields with a valid `json` tag will be converted to TypeScript models.
