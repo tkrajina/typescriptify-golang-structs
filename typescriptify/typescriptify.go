@@ -70,11 +70,11 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	for i := 0; i < typeOf.NumField(); i++ {
 		f := typeOf.Field(i)
 
-		switch f.Type.Kind() {
-		case reflect.Struct:
+		kind := f.Type.Kind()
+		if f.Anonymous && kind == reflect.Struct {
 			//fmt.Println(v.Interface())
 			fields = append(fields, deepFields(f.Type)...)
-		default:
+		} else {
 			fields = append(fields, f)
 		}
 	}
@@ -215,7 +215,8 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		indent: this.Indent,
 	}
 
-	for _, field := range deepFields(typeOf) {
+	fields := deepFields(typeOf)
+	for _, field := range fields {
 		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
 		if len(jsonTag) > 0 {
