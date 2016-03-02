@@ -64,7 +64,7 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	}
 
 	if typeOf.Kind() != reflect.Struct {
-		return fields // No need to populate nonstructs
+		return fields
 	}
 
 	for i := 0; i < typeOf.NumField(); i++ {
