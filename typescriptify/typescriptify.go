@@ -56,6 +56,32 @@ func New() *TypeScriptify {
 	return result
 }
 
+func deepFields(typeOf reflect.Type) []reflect.StructField {
+	fields := make([]reflect.StructField, 0)
+
+	if typeOf.Kind() == reflect.Ptr {
+		typeOf = typeOf.Elem()
+	}
+
+	if typeOf.Kind() != reflect.Struct {
+		return fields // No need to populate nonstructs
+	}
+
+	for i := 0; i < typeOf.NumField(); i++ {
+		f := typeOf.Field(i)
+
+		switch f.Type.Kind() {
+		case reflect.Struct:
+			//fmt.Println(v.Interface())
+			fields = append(fields, deepFields(f.Type)...)
+		default:
+			fields = append(fields, f)
+		}
+	}
+
+	return fields
+}
+
 func (this *TypeScriptify) Add(obj interface{}) {
 	this.AddType(reflect.TypeOf(obj))
 }
@@ -189,10 +215,8 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		indent: this.Indent,
 	}
 
-	for i := 0; i < typeOf.NumField(); i++ {
-		val := typeOf.Field(i)
-		//fmt.Println("kind=", val.Type.Kind().String())
-		jsonTag := val.Tag.Get("json")
+	for _, field := range deepFields(typeOf) {
+		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
 		if len(jsonTag) > 0 {
 			jsonTagParts := strings.Split(jsonTag, ",")
@@ -202,26 +226,26 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		}
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
-			if val.Type.Kind() == reflect.Struct { // Struct:
-				typeScriptChunk, err := this.convertType(val.Type, customCode)
+			if field.Type.Kind() == reflect.Struct { // Struct:
+				typeScriptChunk, err := this.convertType(field.Type, customCode)
 				if err != nil {
 					return "", err
 				}
 				result = typeScriptChunk + "\n" + result
-				builder.AddStructField(jsonFieldName, val.Type.Name())
-			} else if val.Type.Kind() == reflect.Slice { // Slice:
-				if val.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-					typeScriptChunk, err := this.convertType(val.Type.Elem(), customCode)
+				builder.AddStructField(jsonFieldName, field.Type.Name())
+			} else if field.Type.Kind() == reflect.Slice { // Slice:
+				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
+					typeScriptChunk, err := this.convertType(field.Type.Elem(), customCode)
 					if err != nil {
 						return "", err
 					}
 					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, val.Type.Elem().Name())
+					builder.AddArrayOfStructsField(jsonFieldName, field.Type.Elem().Name())
 				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, val.Type.Elem().Name(), val.Type.Elem().Kind())
+					err = builder.AddSimpleArrayField(jsonFieldName, field.Type.Elem().Name(), field.Type.Elem().Kind())
 				}
 			} else { // Simple field:
-				err = builder.AddSimpleField(jsonFieldName, val.Type.Name(), val.Type.Kind())
+				err = builder.AddSimpleField(jsonFieldName, field.Type.Name(), field.Type.Kind())
 			}
 			if err != nil {
 				return "", err

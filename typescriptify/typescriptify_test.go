@@ -21,8 +21,12 @@ type Dummy struct {
 	Something string `json:"something"`
 }
 
+type HasName struct {
+	Name string `json:"name"`
+}
+
 type Person struct {
-	Name      string    `json:"name"`
+	HasName
 	Nicknames []string  `json:"nicknames"`
 	Addresses []Address `json:"addresses"`
 	Dummy     Dummy     `json:"a"`
