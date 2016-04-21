@@ -225,6 +225,10 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	for _, field := range fields {
 		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
+		fieldType := field.Type
+		if fieldType.Kind() == reflect.Ptr {
+			fieldType = field.Type.Elem()
+		}
 		if len(jsonTag) > 0 {
 			jsonTagParts := strings.Split(jsonTag, ",")
 			if len(jsonTagParts) > 0 {
@@ -234,41 +238,41 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 			if field.Name != "" {
 				jsonFieldName = field.Name
 			} else {
-				jsonFieldName = field.Type.Name()
+				jsonFieldName = fieldType.Name()
 			}
 		}
 		fmt.Println("jsonFieldName", jsonFieldName)
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
-			if field.Type.Kind() == reflect.Struct {
+			if fieldType.Kind() == reflect.Struct {
 				// Struct:
-				typeScriptChunk, err := this.convertType(field.Type, customCode)
+				typeScriptChunk, err := this.convertType(fieldType, customCode)
 				if err != nil {
 					return "", err
 				}
 				result = typeScriptChunk + "\n" + result
-				fieldTypeName := field.Type.Name()
-				if field.Type == TimeType {
+				fieldTypeName := fieldType.Name()
+				if fieldType == TimeType {
 					fieldTypeName = "Date"
 				}
 				builder.AddStructField(jsonFieldName, fieldTypeName)
-			} else if field.Type.Kind() == reflect.Slice {
+			} else if fieldType.Kind() == reflect.Slice {
 				// Slice:
-				if field.Type.Elem().Kind() == reflect.Struct {
+				if fieldType.Elem().Kind() == reflect.Struct {
 					// Slice of structs:
-					typeScriptChunk, err := this.convertType(field.Type.Elem(), customCode)
+					typeScriptChunk, err := this.convertType(fieldType.Elem(), customCode)
 					if err != nil {
 						return "", err
 					}
 					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, field.Type.Elem().Name())
+					builder.AddArrayOfStructsField(jsonFieldName, fieldType.Elem().Name())
 				} else {
 					// Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field.Type.Elem().Name(), field.Type.Elem().Kind())
+					err = builder.AddSimpleArrayField(jsonFieldName, fieldType.Elem().Name(), fieldType.Elem().Kind())
 				}
 			} else {
 				// Simple field:
-				err = builder.AddSimpleField(jsonFieldName, field.Type.Name(), field.Type.Kind())
+				err = builder.AddSimpleField(jsonFieldName, fieldType.Name(), fieldType.Kind())
 			}
 			if err != nil {
 				return "", err
