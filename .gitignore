@@ -1,4 +1,2 @@
-*.sw?
-*.backup
-tmp_*
-tags
+.idea/
+go-di.iml
