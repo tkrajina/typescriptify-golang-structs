@@ -9,6 +9,9 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"go/ast"
+	"go/parser"
+	"go/token"
 )
 
 const TEMPLATE = `package main
@@ -44,7 +47,21 @@ func main() {
 	flag.StringVar(&stringExtension, "extension", "", "")
 	flag.Parse()
 
-	structs := flag.Args()
+	structs := []string{}
+	for _, structOrGoFile := range flag.Args() {
+		if strings.HasSuffix(structOrGoFile, ".go") {
+			fmt.Println("Parsing:", structOrGoFile)
+			fileStructs, err := GetGolangFileStructs(structOrGoFile)
+			if err != nil {
+				panic(fmt.Sprintf("Error loading/parsing golang file %s: %s", structOrGoFile, err.Error()))
+			}
+			for _, s := range fileStructs {
+				structs = append(structs, s)
+			}
+		} else {
+			structs = append(structs, structOrGoFile)
+		}
+	}
 
 	if len(packagePath) == 0 {
 		fmt.Fprintln(os.Stderr, "No package given")
@@ -89,6 +106,42 @@ func main() {
 		handleErr(err)
 	}
 	fmt.Println(string(output))
+}
+
+func GetGolangFileStructs(filename string) ([]string, error) {
+	fset := token.NewFileSet() // positions are relative to fset
+
+	f, err := parser.ParseFile(fset, filename, nil, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	v := &AVisitor{}
+	ast.Walk(v, f)
+
+	return v.structs, nil
+}
+
+type AVisitor struct {
+	structNameCandidate string
+	structs             []string
+}
+
+func (v *AVisitor) Visit(node ast.Node) ast.Visitor {
+	if node != nil {
+		switch t := node.(type) {
+		case *ast.Ident:
+			v.structNameCandidate = t.Name
+		case *ast.StructType:
+			if len(v.structNameCandidate) > 0 {
+				v.structs = append(v.structs, v.structNameCandidate)
+				v.structNameCandidate = ""
+			}
+		default:
+			v.structNameCandidate = ""
+		}
+	}
+	return v
 }
 
 func handleErr(err error) {
