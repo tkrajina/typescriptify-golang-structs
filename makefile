@@ -1,3 +1,7 @@
+build:
+	ftmpl jsonconv
+	go run q.go
+	go install ./...
 test:
 	go test ./...
 	go run example/example.go

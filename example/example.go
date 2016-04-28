@@ -1,4 +1,4 @@
-package main
+package example
 
 import "github.com/tkrajina/typescriptify-golang-structs/typescriptify"
 
