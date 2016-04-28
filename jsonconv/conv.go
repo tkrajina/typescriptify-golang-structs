@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"os"
 )
 
 type FieldType int
@@ -87,15 +88,41 @@ func (p *EntityParser) AddType(typeOf reflect.Type) {
 	p.golangTypes = append(p.golangTypes, typeOf)
 }
 
-func (p *EntityParser) Parse() ([]JSONEntity, error) {
+func (p *EntityParser) Parse() error {
 	for _, typeOf := range p.golangTypes {
 		err := p.ParseType(typeOf)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		p.alreadyConverted[typeOf] = true
 	}
-	return p.jsonEntitites, nil
+	return nil
+}
+
+func writeFile(filename string, bytes[] byte) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer f.Close()
+	_, err = f.Write(bytes)
+	return err
+}
+
+func (p *EntityParser) ConvertToJava(filename string) error {
+	result := T__java(TemplateArgs{
+		Entities:            p.jsonEntitites,
+		JSONFieldTypeString: JavaFieldTypeResolver,
+	})
+	return writeFile(filename, []byte(result))
+}
+
+func (p *EntityParser) ConvertToTypescript(filename string) error {
+	result := T__typescript(TemplateArgs{
+		Entities:            p.jsonEntitites,
+		JSONFieldTypeString: TypescriptFieldTypeResolver,
+	})
+	return writeFile(filename, []byte(result))
 }
 
 func (p *EntityParser) ParseType(typeOf reflect.Type) error {
@@ -187,4 +214,56 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	}
 
 	return fields
+}
+
+func TypescriptFieldTypeResolver(field JSONField) string {
+	simpleTypes := map[FieldType]string{
+		FieldTypeNumber:  "number",
+		FieldTypeString:  "string",
+		FieldTypeBoolean: "boolean",
+	}
+
+	if simple, found := simpleTypes[field.Type]; found {
+		return simple
+	}
+
+	if field.Type == FieldTypeArray {
+		if simple, found := simpleTypes[field.ElementType]; found {
+			return fmt.Sprintf("%s[]", simple)
+		} else if len(field.ElementTypeName) > 0 {
+			return fmt.Sprintf("%s[]", field.ElementTypeName)
+		} else {
+			panic(fmt.Sprintf("No element type name for %v", field))
+		}
+	} else if field.Type == FieldTypeObject {
+		return field.ElementTypeName
+	}
+
+	panic(fmt.Sprintf("Cannot find name for %v", field))
+}
+
+func JavaFieldTypeResolver(field JSONField) string {
+	simpleTypes := map[FieldType]string{
+		FieldTypeNumber:  "Double",
+		FieldTypeString:  "String",
+		FieldTypeBoolean: "Boolean",
+	}
+
+	if simple, found := simpleTypes[field.Type]; found {
+		return simple
+	}
+
+	if field.Type == FieldTypeArray {
+		if simple, found := simpleTypes[field.ElementType]; found {
+			return fmt.Sprintf("List<%s>", simple)
+		} else if len(field.ElementTypeName) > 0 {
+			return fmt.Sprintf("List<%s>", field.ElementTypeName)
+		} else {
+			panic(fmt.Sprintf("No element type name for %v", field))
+		}
+	} else if field.Type == FieldTypeObject {
+		return field.ElementTypeName
+	}
+
+	panic(fmt.Sprintf("Cannot find name for %v", field))
 }
