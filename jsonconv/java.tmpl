@@ -1,0 +1,22 @@
+!#arg args TemplateArgs
+!#import "strings"
+
+!for _, entity := range args.Entities {
+public class {{s entity.Name }} {
+!		for _, field := range entity.Fields {
+    @JsonProperty("{{=s field.JsonName }}")
+    private {{=s args.JSONFieldTypeString(field) }} {{=s field.JsonName }};
+
+!		}
+
+!		for _, field := range entity.Fields {
+    public set{{=s strings.Title(field.JsonName) }}(value {{=s args.JSONFieldTypeString(field) }}) {
+            this.{{=s field.JsonName }} = value;
+    }
+    public get{{=s strings.Title(field.JsonName) }}() {
+            return this.{{=s field.JsonName }};
+    }
+
+!		}
+}
+!}

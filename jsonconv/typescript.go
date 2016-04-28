@@ -35,9 +35,9 @@ func TE__typescript(args TemplateArgs) (string, error) {
 		/* !		for _, field := range entity.Fields { */
 		for _, field := range entity.Fields {
 
-			/* {{=s field.JsonName }}: {{=s args.JSONFieldName(field) }}; */
+			/* {{=s field.JsonName }}: {{=s args.JSONFieldTypeString(field) }}; */
 			result.WriteString(fmt.Sprintf(`    %s: %s;
-`, field.JsonName, args.JSONFieldName(field)))
+`, field.JsonName, args.JSONFieldTypeString(field)))
 			/* !		} */
 		}
 

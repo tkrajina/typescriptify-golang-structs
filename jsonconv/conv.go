@@ -46,8 +46,8 @@ func init() {
 }
 
 type TemplateArgs struct {
-	Entities      []JSONEntity
-	JSONFieldName func(JSONField) string
+	Entities            []JSONEntity
+	JSONFieldTypeString func(JSONField) string
 }
 
 type JSONEntity struct {

@@ -3,7 +3,7 @@
 !for _, entity := range args.Entities {
 class {{s entity.Name }} {
 !		for _, field := range entity.Fields {
-    {{=s field.JsonName }}: {{=s args.JSONFieldName(field) }};
+    {{=s field.JsonName }}: {{=s args.JSONFieldTypeString(field) }};
 !		}
 }
 !}
