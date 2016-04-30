@@ -253,7 +253,8 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 				result = typeScriptChunk + "\n" + result
 				fieldTypeName := fieldType.Name()
 				if fieldType == TimeType {
-					fieldTypeName = "Date"
+					//fieldTypeName = "Date"
+					fieldTypeName = "string"
 				}
 				builder.AddStructField(jsonFieldName, fieldTypeName)
 			} else if fieldType.Kind() == reflect.Slice {
@@ -336,7 +337,7 @@ func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) 
 	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
 	createCall := fieldType + ".createFrom"
 	if fieldType == "Date" {
-		createCall = "new Date"
+		createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
 	}
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
 }
@@ -345,7 +346,7 @@ func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType 
 	this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, fieldType)
 	createCall := fieldType + ".createFrom"
 	if fieldType == "Date" {
-		createCall = "new Date"
+		createCall = ""
 	}
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, createCall)
 }
