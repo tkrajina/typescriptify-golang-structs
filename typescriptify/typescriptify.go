@@ -336,7 +336,7 @@ func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
 	createCall := fieldType + ".createFrom"
-	if fieldType == "Date" {
+	if fieldType == "Date" || fieldType == "string" {
 		createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
 	}
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
@@ -345,7 +345,7 @@ func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) 
 func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, fieldType)
 	createCall := fieldType + ".createFrom"
-	if fieldType == "Date" {
+	if fieldType == "Date" || fieldType == "string" {
 		createCall = ""
 	}
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, createCall)
