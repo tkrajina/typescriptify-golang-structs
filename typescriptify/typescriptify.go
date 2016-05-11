@@ -19,10 +19,10 @@ type TypeScriptify struct {
 	CreateFromMethod bool
 	BackupExtension  string // If empty no backup
 
-	golangTypes      []reflect.Type
-	types            map[reflect.Kind]string
+	golangTypes []reflect.Type
+	types       map[reflect.Kind]string
 
-							// throwaway, used when converting
+	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
 }
 
@@ -101,7 +101,7 @@ func (this *TypeScriptify) Convert(customCode map[string]string) (string, error)
 		if err != nil {
 			return "", err
 		}
-		result += "\n" + strings.Trim(typeScriptCode, " " + this.Indent + "\r\n")
+		result += "\n" + strings.Trim(typeScriptCode, " "+this.Indent+"\r\n")
 	}
 	return result, nil
 }
@@ -259,17 +259,22 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 				builder.AddStructField(jsonFieldName, fieldTypeName)
 			} else if fieldType.Kind() == reflect.Slice {
 				// Slice:
-				if fieldType.Elem().Kind() == reflect.Struct {
+				elemType := fieldType.Elem()
+				if elemType.Kind() == reflect.Ptr {
+					fmt.Println("Ptr type", fieldType)
+					elemType = elemType.Elem()
+				}
+				if elemType.Kind() == reflect.Struct {
 					// Slice of structs:
-					typeScriptChunk, err := this.convertType(fieldType.Elem(), customCode)
+					typeScriptChunk, err := this.convertType(elemType, customCode)
 					if err != nil {
 						return "", err
 					}
 					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, fieldType.Elem().Name())
+					builder.AddArrayOfStructsField(jsonFieldName, elemType.Name())
 				} else {
 					// Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, fieldType.Elem().Name(), fieldType.Elem().Kind())
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind())
 				}
 			} else {
 				// Simple field:
