@@ -209,12 +209,17 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	if typeOf == TimeType {
 		return "", nil
 	}
-	if _, found := this.alreadyConverted[typeOf]; found {
-		// Already converted
-		return "", nil
-	}
 
-	this.alreadyConverted[typeOf] = true
+	isAnonymousStruct := len(customName) > 0 && customName[0] != typeOf.Name()
+
+	if !isAnonymousStruct {
+		if _, found := this.alreadyConverted[typeOf]; found {
+			// Already converted
+			return "", nil
+		}
+
+		this.alreadyConverted[typeOf] = true
+	}
 
 	entityName := fmt.Sprintf("%s%s%s", this.Prefix, this.Suffix, typeOf.Name())
 	if len(customName) > 0 {
@@ -254,7 +259,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 				// Struct:
 				fieldTypeName := fieldType.Name()
 				if fieldTypeName == "" {
-					fieldTypeName = "A_" + entityName + "_" + jsonFieldName
+					fieldTypeName = "__" + entityName + "_" + jsonFieldName
 				}
 				typeScriptChunk, err := this.convertType(fieldType, customCode, fieldTypeName)
 				if err != nil {
