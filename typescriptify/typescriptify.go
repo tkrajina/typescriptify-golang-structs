@@ -205,7 +205,7 @@ func (this TypeScriptify) ConvertToFile(fileName string) error {
 	return nil
 }
 
-func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
+func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string, customName ...string) (string, error) {
 	if typeOf == TimeType {
 		return "", nil
 	}
@@ -214,7 +214,13 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		return "", nil
 	}
 
+	this.alreadyConverted[typeOf] = true
+
 	entityName := fmt.Sprintf("%s%s%s", this.Prefix, this.Suffix, typeOf.Name())
+	if len(customName) > 0 {
+		entityName = fmt.Sprintf("%s%s%s", this.Prefix, this.Suffix, customName[0])
+	}
+
 	result := fmt.Sprintf("export class %s {\n", entityName)
 	builder := typeScriptClassBuilder{
 		types:  this.types,
@@ -246,12 +252,15 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 			var err error
 			if fieldType.Kind() == reflect.Struct {
 				// Struct:
-				typeScriptChunk, err := this.convertType(fieldType, customCode)
+				fieldTypeName := fieldType.Name()
+				if fieldTypeName == "" {
+					fieldTypeName = "A_" + entityName + "_" + jsonFieldName
+				}
+				typeScriptChunk, err := this.convertType(fieldType, customCode, fieldTypeName)
 				if err != nil {
 					return "", err
 				}
 				result = typeScriptChunk + "\n" + result
-				fieldTypeName := fieldType.Name()
 				if fieldType == TimeType {
 					//fieldTypeName = "Date"
 					fieldTypeName = "string"
@@ -303,8 +312,6 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	}
 
 	result += "}"
-
-	this.alreadyConverted[typeOf] = true
 
 	return result, nil
 }
