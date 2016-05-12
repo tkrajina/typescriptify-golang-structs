@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 var TimeType = reflect.TypeOf(time.Now())
@@ -19,10 +21,10 @@ type TypeScriptify struct {
 	CreateFromMethod bool
 	BackupExtension  string // If empty no backup
 
-	golangTypes []reflect.Type
-	types       map[reflect.Kind]string
+	golangTypes      []reflect.Type
+	types            map[reflect.Kind]string
 
-	// throwaway, used when converting
+							// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
 }
 
@@ -101,7 +103,7 @@ func (this *TypeScriptify) Convert(customCode map[string]string) (string, error)
 		if err != nil {
 			return "", err
 		}
-		result += "\n" + strings.Trim(typeScriptCode, " "+this.Indent+"\r\n")
+		result += "\n" + strings.Trim(typeScriptCode, " " + this.Indent + "\r\n")
 	}
 	return result, nil
 }
@@ -205,6 +207,11 @@ func (this TypeScriptify) ConvertToFile(fileName string) error {
 	return nil
 }
 
+func IsExported(name string) bool {
+	ch, _ := utf8.DecodeRuneInString(name)
+	return unicode.IsUpper(ch)
+}
+
 func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string, customName ...string) (string, error) {
 	if typeOf == TimeType {
 		return "", nil
@@ -234,6 +241,9 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 
 	fields := deepFields(typeOf)
 	for _, field := range fields {
+		if !IsExported(field.Name) {
+			continue // skip unexported field
+		}
 		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
 		fieldType := field.Type
@@ -255,7 +265,28 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		fmt.Println("jsonFieldName", jsonFieldName)
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
-			if fieldType.Kind() == reflect.Struct {
+			if fieldType.Kind() == reflect.Interface {
+				// empty interface
+				builder.AddStructField(jsonFieldName, "any")
+			} else if fieldType.Kind() == reflect.Map {
+				// map[string]interface{}
+				fmt.Println(fieldType.Key())
+				keyType := "string"
+				if kt, ok := this.types[fieldType.Key().Kind()]; ok {
+					keyType = kt
+				}
+				valType := "any"
+				mapValueType := fieldType.Elem()
+				if mapValueType.Kind() == reflect.Ptr {
+					mapValueType = mapValueType.Elem()
+				}
+				if mapValueType.Kind() == reflect.Struct {
+					valType = mapValueType.Name()
+				} else if vt, ok := this.types[mapValueType.Kind()]; ok {
+					valType = vt
+				}
+				builder.AddStructField(jsonFieldName, "{[key: " + keyType + "]: " + valType + "}")
+			} else if fieldType.Kind() == reflect.Struct {
 				// Struct:
 				fieldTypeName := fieldType.Name()
 				if fieldTypeName == "" {
@@ -353,7 +384,7 @@ func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
 	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
 	createCall := fieldType + ".createFrom"
-	if fieldType == "Date" || fieldType == "string" {
+	if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
 		createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
 	}
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
