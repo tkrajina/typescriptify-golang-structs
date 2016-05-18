@@ -19,6 +19,7 @@ type TypeScriptify struct {
 	Suffix           string
 	Indent           string
 	CreateFromMethod bool
+	UseInterface     bool
 	BackupExtension  string // If empty no backup
 
 	golangTypes      []reflect.Type
@@ -233,7 +234,11 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		entityName = fmt.Sprintf("%s%s%s", this.Prefix, this.Suffix, customName[0])
 	}
 
-	result := fmt.Sprintf("export class %s {\n", entityName)
+	typeKind := "class"
+	if this.UseInterface {
+		typeKind = "interface"
+	}
+	result := fmt.Sprintf("export %s %s {\n", typeKind, entityName)
 	builder := typeScriptClassBuilder{
 		types:  this.types,
 		indent: this.Indent,
@@ -247,7 +252,8 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
 		fieldType := field.Type
-		if fieldType.Kind() == reflect.Ptr {
+		isPtr := fieldType.Kind() == reflect.Ptr
+		if isPtr {
 			fieldType = field.Type.Elem()
 		}
 		if len(jsonTag) > 0 {
@@ -282,10 +288,17 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 				}
 				if mapValueType.Kind() == reflect.Struct {
 					valType = mapValueType.Name()
+					typeScriptChunk, err := this.convertType(mapValueType, customCode)
+					if err != nil {
+						return "", err
+					}
+					if typeScriptChunk != "" {
+						result = typeScriptChunk + "\n" + result
+					}
 				} else if vt, ok := this.types[mapValueType.Kind()]; ok {
 					valType = vt
 				}
-				builder.AddStructField(jsonFieldName, "{[key: " + keyType + "]: " + valType + "}")
+				builder.AddStructField(jsonFieldName, "{[key: " + keyType + "]: " + valType + "}", true)
 			} else if fieldType.Kind() == reflect.Struct {
 				// Struct:
 				fieldTypeName := fieldType.Name()
@@ -301,7 +314,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 					//fieldTypeName = "Date"
 					fieldTypeName = "string"
 				}
-				builder.AddStructField(jsonFieldName, fieldTypeName)
+				builder.AddStructField(jsonFieldName, fieldTypeName, isPtr)
 			} else if fieldType.Kind() == reflect.Slice {
 				// Slice:
 				elemType := fieldType.Elem()
@@ -323,7 +336,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 				}
 			} else {
 				// Simple field:
-				err = builder.AddSimpleField(jsonFieldName, fieldType.Name(), fieldType.Kind())
+				err = builder.AddSimpleField(jsonFieldName, fieldType.Name(), fieldType.Kind(), isPtr)
 			}
 			if err != nil {
 				return "", err
@@ -370,10 +383,14 @@ func (this *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType str
 	return errors.New(fmt.Sprintf("Cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
-func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind) error {
+func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind, isPtr... bool) error {
+	optional := ""
+	if len(isPtr) > 0 && isPtr[0] {
+		optional = "?"
+	}
 	if typeScriptType, ok := this.types[kind]; ok {
 		if len(fieldName) > 0 {
-			this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, typeScriptType)
+			this.fields += fmt.Sprintf("%s%s%s: %s;\n", this.indent, fieldName, optional, typeScriptType)
 			this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
 			return nil
 		}
@@ -381,8 +398,12 @@ func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 	return errors.New("Cannot find type for " + fieldType)
 }
 
-func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
-	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
+func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isPtr... bool) {
+	optional := ""
+	if len(isPtr) > 0 && isPtr[0] {
+		optional = "?"
+	}
+	this.fields += fmt.Sprintf("%s%s%s: %s;\n", this.indent, fieldName, optional, fieldType)
 	createCall := fieldType + ".createFrom"
 	if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
 		createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
