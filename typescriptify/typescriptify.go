@@ -22,10 +22,10 @@ type TypeScriptify struct {
 	UseInterface     bool
 	BackupExtension  string // If empty no backup
 
-	golangTypes      []reflect.Type
-	types            map[reflect.Kind]string
+	golangTypes []reflect.Type
+	types       map[reflect.Kind]string
 
-							// throwaway, used when converting
+	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
 }
 
@@ -52,6 +52,8 @@ func New() *TypeScriptify {
 	types[reflect.Float64] = "number"
 
 	types[reflect.String] = "string"
+
+	types[reflect.Interface] = "any"
 
 	result.types = types
 
@@ -104,7 +106,7 @@ func (this *TypeScriptify) Convert(customCode map[string]string) (string, error)
 		if err != nil {
 			return "", err
 		}
-		result += "\n" + strings.Trim(typeScriptCode, " " + this.Indent + "\r\n")
+		result += "\n" + strings.Trim(typeScriptCode, " "+this.Indent+"\r\n")
 	}
 	return result, nil
 }
@@ -245,6 +247,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	}
 
 	fields := deepFields(typeOf)
+	fmt.Println(typeOf.Name(), typeOf.Kind(), entityName, "fields:", fields)
 	for _, field := range fields {
 		if !IsExported(field.Name) {
 			continue // skip unexported field
@@ -269,11 +272,14 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 			}
 		}
 		fmt.Println("jsonFieldName", jsonFieldName)
+
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
+
 			if fieldType.Kind() == reflect.Interface {
 				// empty interface
 				builder.AddStructField(jsonFieldName, "any")
+
 			} else if fieldType.Kind() == reflect.Map {
 				// map[string]interface{}
 				fmt.Println(fieldType.Key())
@@ -298,12 +304,13 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 				} else if vt, ok := this.types[mapValueType.Kind()]; ok {
 					valType = vt
 				}
-				builder.AddStructField(jsonFieldName, "{[key: " + keyType + "]: " + valType + "}", true)
+				builder.AddStructField(jsonFieldName, "{[key: "+keyType+"]: "+valType+"}", true)
+
 			} else if fieldType.Kind() == reflect.Struct {
 				// Struct:
 				fieldTypeName := fieldType.Name()
 				if fieldTypeName == "" {
-					fieldTypeName = "__" + entityName + "_" + jsonFieldName
+					fieldTypeName = "__" + entityName + "_" + jsonFieldName // inline struct declaration
 				}
 				typeScriptChunk, err := this.convertType(fieldType, customCode, fieldTypeName)
 				if err != nil {
@@ -315,6 +322,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 					fieldTypeName = "string"
 				}
 				builder.AddStructField(jsonFieldName, fieldTypeName, isPtr)
+
 			} else if fieldType.Kind() == reflect.Slice {
 				// Slice:
 				elemType := fieldType.Elem()
@@ -322,18 +330,31 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 					fmt.Println("Ptr type", fieldType)
 					elemType = elemType.Elem()
 				}
+
 				if elemType.Kind() == reflect.Struct {
 					// Slice of structs:
-					typeScriptChunk, err := this.convertType(elemType, customCode)
+					elemTypeName := elemType.Name()
+					if elemTypeName == "" {
+						elemTypeName = "__" + entityName + "_" + jsonFieldName // inline struct declaration
+					}
+					typeScriptChunk, err := this.convertType(elemType, customCode, elemTypeName)
 					if err != nil {
 						return "", err
 					}
 					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, elemType.Name())
+					if elemType.Name() != "" {
+						builder.AddArrayOfStructsField(jsonFieldName, elemType.Name())
+					} else {
+						builder.AddArrayOfStructsField(jsonFieldName, elemTypeName)
+					}
+
+				} else if elemType.Kind() == reflect.Interface {
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind())
 				} else {
 					// Slice of simple fields:
 					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind())
 				}
+
 			} else {
 				// Simple field:
 				err = builder.AddSimpleField(jsonFieldName, fieldType.Name(), fieldType.Kind(), isPtr)
@@ -383,7 +404,7 @@ func (this *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType str
 	return errors.New(fmt.Sprintf("Cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
-func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind, isPtr... bool) error {
+func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind, isPtr ...bool) error {
 	optional := ""
 	if len(isPtr) > 0 && isPtr[0] {
 		optional = "?"
@@ -398,7 +419,7 @@ func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 	return errors.New("Cannot find type for " + fieldType)
 }
 
-func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isPtr... bool) {
+func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isPtr ...bool) {
 	optional := ""
 	if len(isPtr) > 0 && isPtr[0] {
 		optional = "?"
