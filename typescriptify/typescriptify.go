@@ -371,6 +371,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	result += builder.fields
 	if this.CreateConstructor {
 		result += fmt.Sprintf("\n%sconstructor(init?: %s) {\n", this.Indent, entityName)
+		result += fmt.Sprintf("%s%sif (!init) return\n", this.Indent, this.Indent)
 		// result += fmt.Sprintf("%s%svar result = new %s()\n", this.Indent, this.Indent, entityName)
 		result += builder.createFromMethodBody
 		// result += fmt.Sprintf("%s%sreturn result\n", this.Indent, this.Indent)
@@ -411,7 +412,7 @@ func (this *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType str
 		if len(fieldName) > 0 {
 			this.fields += fmt.Sprintf("%s%s: %s[]\n", this.indent, fieldName, typeScriptType)
 			// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"]\n", this.indent, this.indent, fieldName, fieldName)
-			this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
+			this.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 			return nil
 		}
 	}
@@ -427,7 +428,7 @@ func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 		if len(fieldName) > 0 {
 			this.fields += fmt.Sprintf("%s%s%s: %s\n", this.indent, fieldName, optional, typeScriptType)
 			// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"]\n", this.indent, this.indent, fieldName, fieldName)
-			this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
+			this.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 			return nil
 		}
 	}
@@ -446,7 +447,7 @@ func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, 
 	// }
 	// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
 
-	this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
+	this.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 }
 
 func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
@@ -457,5 +458,5 @@ func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType 
 	// }
 	// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, createCall)
 
-	this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
+	this.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 }
