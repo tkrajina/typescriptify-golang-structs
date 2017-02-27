@@ -15,18 +15,20 @@ import (
 var TimeType = reflect.TypeOf(time.Now())
 
 type TypeScriptify struct {
-	Prefix           string
-	Suffix           string
-	Indent           string
-	CreateFromMethod bool
-	UseInterface     bool
-	BackupExtension  string // If empty no backup
+	Prefix            string
+	Suffix            string
+	Indent            string
+	CreateConstructor bool
+	UseInterface      bool
+	BackupExtension   string // If empty no backup
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
+
+	AllOptional bool
 }
 
 func New() *TypeScriptify {
@@ -58,7 +60,7 @@ func New() *TypeScriptify {
 	result.types = types
 
 	result.Indent = "    "
-	result.CreateFromMethod = true
+	result.CreateConstructor = true
 
 	return result
 }
@@ -242,8 +244,9 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	}
 	result := fmt.Sprintf("export %s %s {\n", typeKind, entityName)
 	builder := typeScriptClassBuilder{
-		types:  this.types,
-		indent: this.Indent,
+		types:       this.types,
+		indent:      this.Indent,
+		AllOptional: this.AllOptional,
 	}
 
 	fields := deepFields(typeOf)
@@ -366,13 +369,21 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	}
 
 	result += builder.fields
-	if this.CreateFromMethod {
-		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", this.Indent)
-		result += fmt.Sprintf("%s%svar result = new %s();\n", this.Indent, this.Indent, entityName)
+	if this.CreateConstructor {
+		result += fmt.Sprintf("\n%sconstructor(init?: %s) {\n", this.Indent, entityName)
+		// result += fmt.Sprintf("%s%svar result = new %s()\n", this.Indent, this.Indent, entityName)
 		result += builder.createFromMethodBody
-		result += fmt.Sprintf("%s%sreturn result;\n", this.Indent, this.Indent)
+		// result += fmt.Sprintf("%s%sreturn result\n", this.Indent, this.Indent)
 		result += fmt.Sprintf("%s}\n\n", this.Indent)
 	}
+
+	// if this.CreateConstructor {
+	// 	result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", this.Indent)
+	// 	result += fmt.Sprintf("%s%svar result = new %s()\n", this.Indent, this.Indent, entityName)
+	// 	result += builder.createFromMethodBody
+	// 	result += fmt.Sprintf("%s%sreturn result\n", this.Indent, this.Indent)
+	// 	result += fmt.Sprintf("%s}\n\n", this.Indent)
+	// }
 
 	if customCode != nil {
 		code := customCode[entityName]
@@ -391,13 +402,16 @@ type typeScriptClassBuilder struct {
 	indent               string
 	fields               string
 	createFromMethodBody string
+
+	AllOptional bool
 }
 
 func (this *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
 	if typeScriptType, ok := this.types[kind]; ok {
 		if len(fieldName) > 0 {
-			this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, typeScriptType)
-			this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
+			this.fields += fmt.Sprintf("%s%s: %s[]\n", this.indent, fieldName, typeScriptType)
+			// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"]\n", this.indent, this.indent, fieldName, fieldName)
+			this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 			return nil
 		}
 	}
@@ -406,13 +420,14 @@ func (this *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType str
 
 func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind, isPtr ...bool) error {
 	optional := ""
-	if len(isPtr) > 0 && isPtr[0] {
+	if this.AllOptional || len(isPtr) > 0 && isPtr[0] {
 		optional = "?"
 	}
 	if typeScriptType, ok := this.types[kind]; ok {
 		if len(fieldName) > 0 {
-			this.fields += fmt.Sprintf("%s%s%s: %s;\n", this.indent, fieldName, optional, typeScriptType)
-			this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
+			this.fields += fmt.Sprintf("%s%s%s: %s\n", this.indent, fieldName, optional, typeScriptType)
+			// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"]\n", this.indent, this.indent, fieldName, fieldName)
+			this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 			return nil
 		}
 	}
@@ -421,22 +436,26 @@ func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 
 func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isPtr ...bool) {
 	optional := ""
-	if len(isPtr) > 0 && isPtr[0] {
+	if this.AllOptional || len(isPtr) > 0 && isPtr[0] {
 		optional = "?"
 	}
-	this.fields += fmt.Sprintf("%s%s%s: %s;\n", this.indent, fieldName, optional, fieldType)
-	createCall := fieldType + ".createFrom"
-	if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
-		createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
-	}
-	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
+	this.fields += fmt.Sprintf("%s%s%s: %s\n", this.indent, fieldName, optional, fieldType)
+	// createCall := fieldType + ".createFrom"
+	// if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
+	// 	createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
+	// }
+	// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
+
+	this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 }
 
 func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
-	this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, fieldType)
-	createCall := fieldType + ".createFrom"
-	if fieldType == "Date" || fieldType == "string" {
-		createCall = ""
-	}
-	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, createCall)
+	this.fields += fmt.Sprintf("%s%s: %s[]\n", this.indent, fieldName, fieldType)
+	// createCall := fieldType + ".createFrom"
+	// if fieldType == "Date" || fieldType == "string" {
+	// 	createCall = ""
+	// }
+	// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, createCall)
+
+	this.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = init.%s ? init.%s : null\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 }
