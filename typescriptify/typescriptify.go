@@ -8,21 +8,30 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"regexp"
 )
 
-type TypeScriptify struct {
-	Prefix           string
-	Suffix           string
-	Indent           string
-	CreateFromMethod bool
-	BackupExtension  string // If empty no backup
+type (
+	TagFn func(nameField *string, value string) (string, string)
 
-	golangTypes []reflect.Type
-	types       map[reflect.Kind]string
+	TypeScriptify struct {
+		Prefix           string
+		Suffix           string
+		Indent           string
+		CreateFromMethod bool
+		BackupExtension  string // If empty no backup
 
-	// throwaway, used when converting
-	alreadyConverted map[reflect.Type]bool
-}
+		tagsHandler map[string]TagFn
+
+		golangTypes []reflect.Type
+		types       map[reflect.Kind]string
+
+		// throwaway, used when converting
+		alreadyConverted map[reflect.Type]bool
+	}
+)
+
+var TagRegExp = regexp.MustCompile("(?i)([a-z]+):\"(.+?)\"\\s?")
 
 func New() *TypeScriptify {
 	result := new(TypeScriptify)
@@ -49,6 +58,8 @@ func New() *TypeScriptify {
 	types[reflect.String] = "string"
 
 	result.types = types
+
+	result.tagsHandler = map[string]TagFn{}
 
 	result.Indent = "    "
 	result.CreateFromMethod = true
@@ -88,6 +99,18 @@ func (this *TypeScriptify) Add(obj interface{}) {
 
 func (this *TypeScriptify) AddType(typeOf reflect.Type) {
 	this.golangTypes = append(this.golangTypes, typeOf)
+}
+
+func (this *TypeScriptify) AddTag(tagName string, tagFn TagFn) {
+	this.tagsHandler[tagName] = tagFn
+}
+
+func (this *TypeScriptify) RemoveTag(tagName string) {
+	this.tagsHandler[tagName] = nil
+}
+
+func (this *TypeScriptify) GetTagsHandler() map[string]TagFn {
+	return this.tagsHandler
 }
 
 func (this *TypeScriptify) Convert(customCode map[string]string) (string, error) {
@@ -216,6 +239,7 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	}
 
 	fields := deepFields(typeOf)
+
 	for _, field := range fields {
 		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
@@ -227,14 +251,16 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 		}
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
-			if field.Type.Kind() == reflect.Struct { // Struct:
+
+			switch field.Type.Kind() {
+			case reflect.Struct: // Struct:
 				typeScriptChunk, err := this.convertType(field.Type, customCode)
 				if err != nil {
 					return "", err
 				}
 				result = typeScriptChunk + "\n" + result
 				builder.AddStructField(jsonFieldName, field.Type.Name())
-			} else if field.Type.Kind() == reflect.Slice { // Slice:
+			case reflect.Slice: // Slice:
 				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
 					typeScriptChunk, err := this.convertType(field.Type.Elem(), customCode)
 					if err != nil {
@@ -245,11 +271,18 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 				} else { // Slice of simple fields:
 					err = builder.AddSimpleArrayField(jsonFieldName, field.Type.Elem().Name(), field.Type.Elem().Kind())
 				}
-			} else { // Simple field:
+			default: // Simple field:
 				err = builder.AddSimpleField(jsonFieldName, field.Type.Name(), field.Type.Kind())
 			}
 			if err != nil {
 				return "", err
+			}
+
+			tags := TagRegExp.FindAllStringSubmatch(string(field.Tag), -1)
+			for _, tag := range tags {
+				if len(tag) > 2 && this.tagsHandler[tag[1]] != nil {
+					builder.AddCustomField(this.tagsHandler[tag[1]](&jsonFieldName, tag[2]))
+				}
 			}
 		}
 	}
@@ -305,8 +338,12 @@ func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, 
 }
 
 func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
-	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
+	this.AddCustomField(fieldName, fieldType)
 	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldType, fieldName)
+}
+
+func (this *typeScriptClassBuilder) AddCustomField(fieldName, fieldType string) {
+	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
 }
 
 func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
