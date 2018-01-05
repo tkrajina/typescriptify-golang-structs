@@ -495,7 +495,7 @@ func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, 
 	if this.AllOptional || len(isPtr) > 0 && isPtr[0] {
 		optional = "?"
 	}
-	this.fields += fmt.Sprintf("%s%s%s: %s\n", this.indent, fieldName, optional, fieldType)
+	this.fields += fmt.Sprintf("%s%s%s: %s;\n", this.indent, fieldName, optional, fieldType)
 	// createCall := fieldType + ".createFrom"
 	// if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
 	// 	createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
