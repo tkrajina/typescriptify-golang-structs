@@ -12,8 +12,6 @@ import (
 	"unicode/utf8"
 )
 
-var TimeType = reflect.TypeOf(time.Now())
-
 type TypeScriptify struct {
 	Prefix            string
 	Suffix            string
@@ -26,6 +24,7 @@ type TypeScriptify struct {
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
 	structTypes map[string]reflect.Type
+	dateTypes   []reflect.Type
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
@@ -58,6 +57,10 @@ func New() *TypeScriptify {
 	types[reflect.String] = "string"
 
 	types[reflect.Interface] = "any"
+
+	result.dateTypes = []reflect.Type{
+		reflect.TypeOf(time.Now()),
+	}
 
 	result.types = types
 	result.structTypes = make(map[string]reflect.Type)
@@ -100,6 +103,10 @@ func (this *TypeScriptify) Add(obj interface{}) {
 
 func (this *TypeScriptify) AddType(typeOf reflect.Type) {
 	this.golangTypes = append(this.golangTypes, typeOf)
+}
+
+func (this *TypeScriptify) RegisterDateType(typeOf reflect.Type) {
+	this.dateTypes = append(this.dateTypes, typeOf)
 }
 
 func (this *TypeScriptify) Convert(customCode map[string]string) (string, error) {
@@ -229,8 +236,10 @@ func IsExported(name string) bool {
 }
 
 func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string, customName ...string) (string, error) {
-	if typeOf == TimeType {
-		return "", nil
+	for _, v := range this.dateTypes {
+		if v == typeOf {
+			return "", nil
+		}
 	}
 
 	isAnonymousStruct := len(customName) > 0 && customName[0] != typeOf.Name()
@@ -333,10 +342,17 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 					return "", err
 				}
 				result = typeScriptChunk + "\n" + result
-				if fieldType == TimeType {
-					//fieldTypeName = "Date"
-					fieldTypeName = "string"
-				} else {
+
+				isDateField := false
+				for _, v := range this.dateTypes {
+					if v != fieldType {
+						continue
+					}
+
+					isDateField = true
+					fieldTypeName = "Date"
+				}
+				if !isDateField {
 					this.structTypes[fieldTypeName] = fieldType
 				}
 				builder.AddStructField(jsonFieldName, fieldTypeName, isPtr)
@@ -479,19 +495,27 @@ func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, 
 	if this.AllOptional || len(isPtr) > 0 && isPtr[0] {
 		optional = "?"
 	}
-	this.fields += fmt.Sprintf("%s%s%s: %s\n", this.indent, fieldName, optional, fieldType)
+	this.fields += fmt.Sprintf("%s%s%s: %s;\n", this.indent, fieldName, optional, fieldType)
 	// createCall := fieldType + ".createFrom"
 	// if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
 	// 	createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
 	// }
 	// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
 	fieldEmptyValue := fmt.Sprintf("%s.emptyObject()", fieldType)
-	if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
+	if fieldType == "string" || fieldType == "any" {
 		fieldEmptyValue = "\"\"" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
+	}
+	if strings.HasPrefix(fieldType, "{") {
+		fieldEmptyValue = "null"
+	}
+	if fieldType == "Date" {
+		fieldEmptyValue = "null"
+		this.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = new Date(init.%s as any)\n", this.indent, this.indent, fieldName, fieldName, fieldName)
+	} else {
+		this.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 	}
 	this.createEmptyObjectBody += fmt.Sprintf("%s%sresult.%s = %s\n", this.indent, this.indent, fieldName, fieldEmptyValue)
 
-	this.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", this.indent, this.indent, fieldName, fieldName, fieldName)
 }
 
 func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
