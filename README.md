@@ -4,6 +4,10 @@ Use the commantline tool:
 
     tscriptify -package=package/with/your/models -target=target_ts_file.ts Model1 Model2
 
+If all your structs are in one file, you can convert them with:
+
+    tscriptify -package=package/with/your/models -target=target_ts_file.ts path/to/file/with/structs.go
+
 Or by using it from your code:
 
     converter := typescriptify.New()
