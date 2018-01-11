@@ -302,11 +302,11 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		fmt.Println("jsonFieldName", jsonFieldName)
 
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
-			var err error
+			optional, err := t.parseTag(field)
 
 			if fieldType.Kind() == reflect.Interface {
 				// empty interface
-				builder.AddStructField(jsonFieldName, "any")
+				builder.AddStructField(jsonFieldName, "any", false, optional)
 
 			} else if fieldType.Kind() == reflect.Map {
 				// map[string]interface{}
@@ -332,7 +332,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				} else if vt, ok := t.types[mapValueType.Kind()]; ok {
 					valType = vt
 				}
-				builder.AddStructField(jsonFieldName, "{[key: "+keyType+"]: "+valType+"}", true)
+				builder.AddStructField(jsonFieldName, "{[key: "+keyType+"]: "+valType+"}", true, optional)
 
 			} else if fieldType.Kind() == reflect.Struct {
 				// Struct:
@@ -358,7 +358,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				if !isDateField {
 					t.structTypes[fieldTypeName] = fieldType
 				}
-				builder.AddStructField(jsonFieldName, fieldTypeName, isPtr)
+				builder.AddStructField(jsonFieldName, fieldTypeName, isPtr, optional)
 
 			} else if fieldType.Kind() == reflect.Slice {
 				// Slice:
@@ -433,6 +433,17 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	return result, nil
 }
 
+func (t *TypeScriptify) parseTag(field reflect.StructField) (optional bool, err error) {
+	tag := field.Tag.Get("typescriptify")
+	for _, v := range strings.Split(tag, ",") {
+		switch v {
+		case "optional":
+			optional = true
+		}
+	}
+	return
+}
+
 type typeScriptClassBuilder struct {
 	types                 map[reflect.Kind]string
 	structTypes           map[string]reflect.Type
@@ -485,9 +496,9 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kin
 	return errors.New("Cannot find type for " + fieldType)
 }
 
-func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isPtr ...bool) {
+func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isPtr bool, isOptional bool) {
 	optional := ""
-	if t.AllOptional || len(isPtr) > 0 && isPtr[0] {
+	if isOptional || t.AllOptional || isPtr {
 		optional = "?"
 	}
 	t.fields += fmt.Sprintf("%s%s%s: %s;\n", t.indent, fieldName, optional, fieldType)
