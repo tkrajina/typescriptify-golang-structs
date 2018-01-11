@@ -8,20 +8,29 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 type TypeScriptify struct {
-	Prefix           string
-	Suffix           string
-	Indent           string
-	CreateFromMethod bool
-	BackupExtension  string // If empty no backup
+	Prefix             string
+	Suffix             string
+	Indent             string
+	CreateConstructor  bool
+	CreateEmptyObject  bool
+	CreateAllModelType bool
+	UseInterface       bool
+	BackupExtension    string // If empty no backup
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
+	structTypes map[string]reflect.Type
+	dateTypes   []reflect.Type
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
+
+	AllOptional bool
 }
 
 func New() *TypeScriptify {
@@ -48,10 +57,17 @@ func New() *TypeScriptify {
 
 	types[reflect.String] = "string"
 
+	types[reflect.Interface] = "any"
+
+	result.dateTypes = []reflect.Type{
+		reflect.TypeOf(time.Now()),
+	}
+
 	result.types = types
+	result.structTypes = make(map[string]reflect.Type)
 
 	result.Indent = "    "
-	result.CreateFromMethod = true
+	result.CreateConstructor = true
 
 	return result
 }
@@ -82,25 +98,39 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
-func (this *TypeScriptify) Add(obj interface{}) {
-	this.AddType(reflect.TypeOf(obj))
+func (t *TypeScriptify) Add(obj interface{}) {
+	t.AddType(reflect.TypeOf(obj))
 }
 
-func (this *TypeScriptify) AddType(typeOf reflect.Type) {
-	this.golangTypes = append(this.golangTypes, typeOf)
+func (t *TypeScriptify) AddType(typeOf reflect.Type) {
+	t.golangTypes = append(t.golangTypes, typeOf)
 }
 
-func (this *TypeScriptify) Convert(customCode map[string]string) (string, error) {
-	this.alreadyConverted = make(map[reflect.Type]bool)
+func (t *TypeScriptify) RegisterDateType(typeOf reflect.Type) {
+	t.dateTypes = append(t.dateTypes, typeOf)
+}
+
+func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
+	t.alreadyConverted = make(map[reflect.Type]bool)
 
 	result := ""
-	for _, typeof := range this.golangTypes {
-		typeScriptCode, err := this.convertType(typeof, customCode)
+	for _, typeof := range t.golangTypes {
+		typeScriptCode, err := t.convertType(typeof, customCode)
 		if err != nil {
 			return "", err
 		}
-		result += "\n" + strings.Trim(typeScriptCode, " "+this.Indent+"\r\n")
+		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
 	}
+
+	if t.CreateAllModelType {
+		structItems := ""
+		for tsStructTypeName := range t.structTypes {
+			structItems += fmt.Sprintf("\"%s\":%s,\n", tsStructTypeName, tsStructTypeName)
+		}
+
+		result += fmt.Sprintf("\nexport let AllModelTypes = {\n%s}\n", structItems)
+	}
+
 	return result, nil
 }
 
@@ -140,7 +170,7 @@ func loadCustomCode(fileName string) (map[string]string, error) {
 	return result, nil
 }
 
-func (this TypeScriptify) backup(fileName string) error {
+func (t TypeScriptify) backup(fileName string) error {
 	fileIn, err := os.Open(fileName)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -156,7 +186,7 @@ func (this TypeScriptify) backup(fileName string) error {
 		return err
 	}
 
-	fileOut, err := os.Create(fmt.Sprintf("%s-%s.%s", fileName, time.Now().Format("2006-01-02T15_04_05.99"), this.BackupExtension))
+	fileOut, err := os.Create(fmt.Sprintf("%s-%s.%s", fileName, time.Now().Format("2006-01-02T15_04_05.99"), t.BackupExtension))
 	if err != nil {
 		return err
 	}
@@ -170,9 +200,9 @@ func (this TypeScriptify) backup(fileName string) error {
 	return nil
 }
 
-func (this TypeScriptify) ConvertToFile(fileName string) error {
-	if len(this.BackupExtension) > 0 {
-		err := this.backup(fileName)
+func (t TypeScriptify) ConvertToFile(fileName string) error {
+	if len(t.BackupExtension) > 0 {
+		err := t.backup(fileName)
 		if err != nil {
 			return err
 		}
@@ -189,7 +219,7 @@ func (this TypeScriptify) ConvertToFile(fileName string) error {
 	}
 	defer f.Close()
 
-	converted, err := this.Convert(customCode)
+	converted, err := t.Convert(customCode)
 	if err != nil {
 		return err
 	}
@@ -203,50 +233,169 @@ func (this TypeScriptify) ConvertToFile(fileName string) error {
 	return nil
 }
 
-func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
-	if _, found := this.alreadyConverted[typeOf]; found { // Already converted
-		return "", nil
+func IsExported(name string) bool {
+	ch, _ := utf8.DecodeRuneInString(name)
+	return unicode.IsUpper(ch)
+}
+
+func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string, customName ...string) (string, error) {
+	for _, v := range t.dateTypes {
+		if v == typeOf {
+			return "", nil
+		}
 	}
 
-	entityName := fmt.Sprintf("%s%s%s", this.Prefix, this.Suffix, typeOf.Name())
-	result := fmt.Sprintf("class %s {\n", entityName)
+	isAnonymousStruct := len(customName) > 0 && customName[0] != typeOf.Name()
+
+	if !isAnonymousStruct {
+		if _, found := t.alreadyConverted[typeOf]; found {
+			// Already converted
+			return "", nil
+		}
+
+		t.alreadyConverted[typeOf] = true
+	}
+
+	entityName := fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, typeOf.Name())
+	if len(customName) > 0 {
+		entityName = fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, customName[0])
+	}
+
+	typeKind := "class"
+	if t.UseInterface {
+		typeKind = "interface"
+	}
+	t.structTypes[entityName] = typeOf
+	result := fmt.Sprintf("export %s %s {\n", typeKind, entityName)
 	builder := typeScriptClassBuilder{
-		types:  this.types,
-		indent: this.Indent,
+		types:       t.types,
+		structTypes: t.structTypes,
+		indent:      t.Indent,
+		AllOptional: t.AllOptional,
 	}
 
 	fields := deepFields(typeOf)
+	fmt.Println(typeOf.Name(), typeOf.Kind(), entityName, "fields:", fields)
 	for _, field := range fields {
+		if !IsExported(field.Name) {
+			continue // skip unexported field
+		}
 		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
+		fieldType := field.Type
+		isPtr := fieldType.Kind() == reflect.Ptr
+		if isPtr {
+			fieldType = field.Type.Elem()
+		}
 		if len(jsonTag) > 0 {
 			jsonTagParts := strings.Split(jsonTag, ",")
 			if len(jsonTagParts) > 0 {
-				jsonFieldName = strings.Trim(jsonTagParts[0], this.Indent)
+				jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
+			}
+		} else {
+			if field.Name != "" {
+				jsonFieldName = field.Name
+			} else {
+				jsonFieldName = fieldType.Name()
 			}
 		}
+		fmt.Println("jsonFieldName", jsonFieldName)
+
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
-			var err error
-			if field.Type.Kind() == reflect.Struct { // Struct:
-				typeScriptChunk, err := this.convertType(field.Type, customCode)
+			isOptional, err := t.parseTag(field)
+
+			if fieldType.Kind() == reflect.Interface {
+				// empty interface
+				builder.AddStructField(jsonFieldName, "any", false, isOptional)
+
+			} else if fieldType.Kind() == reflect.Map {
+				// map[string]interface{}
+				fmt.Println(fieldType.Key())
+				keyType := "string"
+				if kt, ok := t.types[fieldType.Key().Kind()]; ok {
+					keyType = kt
+				}
+				valType := "any"
+				mapValueType := fieldType.Elem()
+				if mapValueType.Kind() == reflect.Ptr {
+					mapValueType = mapValueType.Elem()
+				}
+				if mapValueType.Kind() == reflect.Struct {
+					valType = t.Prefix + mapValueType.Name() + t.Suffix
+					typeScriptChunk, err := t.convertType(mapValueType, customCode)
+					if err != nil {
+						return "", err
+					}
+					if typeScriptChunk != "" {
+						result = typeScriptChunk + "\n" + result
+					}
+				} else if vt, ok := t.types[mapValueType.Kind()]; ok {
+					valType = vt
+				}
+				builder.AddStructField(jsonFieldName, "{[key: "+keyType+"]: "+valType+"}", true, isOptional)
+
+			} else if fieldType.Kind() == reflect.Struct {
+				// Struct:
+				fieldTypeName := fieldType.Name()
+				if fieldTypeName == "" {
+					fieldTypeName = "__" + entityName + "_" + jsonFieldName // inline struct declaration
+				}
+				typeScriptChunk, err := t.convertType(fieldType, customCode, fieldTypeName)
 				if err != nil {
 					return "", err
 				}
 				result = typeScriptChunk + "\n" + result
-				builder.AddStructField(jsonFieldName, field.Type.Name())
-			} else if field.Type.Kind() == reflect.Slice { // Slice:
-				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-					typeScriptChunk, err := this.convertType(field.Type.Elem(), customCode)
+
+				isDateField := false
+				for _, v := range t.dateTypes {
+					if v != fieldType {
+						continue
+					}
+
+					isDateField = true
+					fieldTypeName = "Date"
+				}
+				if !isDateField {
+					t.structTypes[fieldTypeName] = fieldType
+				}
+				builder.AddStructField(jsonFieldName, fieldTypeName, isPtr, isOptional)
+
+			} else if fieldType.Kind() == reflect.Slice {
+				// Slice:
+				elemType := fieldType.Elem()
+				if elemType.Kind() == reflect.Ptr {
+					fmt.Println("Ptr type", fieldType)
+					elemType = elemType.Elem()
+				}
+
+				if elemType.Kind() == reflect.Struct {
+					// Slice of structs:
+					elemTypeName := elemType.Name()
+					if elemTypeName == "" {
+						elemTypeName = "__" + entityName + "_" + jsonFieldName // inline struct declaration
+					}
+					typeScriptChunk, err := t.convertType(elemType, customCode, elemTypeName)
 					if err != nil {
 						return "", err
 					}
 					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, field.Type.Elem().Name())
-				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field.Type.Elem().Name(), field.Type.Elem().Kind())
+					t.structTypes[elemTypeName] = elemType
+					if elemType.Name() != "" {
+						builder.AddArrayOfStructsField(jsonFieldName, t.Prefix + elemType.Name() + t.Suffix)
+					} else {
+						builder.AddArrayOfStructsField(jsonFieldName, t.Prefix + elemTypeName + t.Suffix)
+					}
+
+				} else if elemType.Kind() == reflect.Interface {
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind())
+				} else {
+					// Slice of simple fields:
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind())
 				}
-			} else { // Simple field:
-				err = builder.AddSimpleField(jsonFieldName, field.Type.Name(), field.Type.Kind())
+
+			} else {
+				// Simple field:
+				err = builder.AddSimpleField(jsonFieldName, fieldType.Name(), fieldType.Kind(), isPtr, isOptional)
 			}
 			if err != nil {
 				return "", err
@@ -255,61 +404,135 @@ func (this *TypeScriptify) convertType(typeOf reflect.Type, customCode map[strin
 	}
 
 	result += builder.fields
-	if this.CreateFromMethod {
-		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", this.Indent)
-		result += fmt.Sprintf("%s%svar result = new %s();\n", this.Indent, this.Indent, entityName)
+	if t.CreateConstructor {
+		result += fmt.Sprintf("\n%sconstructor(init?: %s) {\n", t.Indent, entityName)
+		result += fmt.Sprintf("%s%sif (!init) return\n", t.Indent, t.Indent)
+		// result += fmt.Sprintf("%s%svar result = new %s()\n", this.Indent, this.Indent, entityName)
 		result += builder.createFromMethodBody
-		result += fmt.Sprintf("%s%sreturn result;\n", this.Indent, this.Indent)
-		result += fmt.Sprintf("%s}\n\n", this.Indent)
+		// result += fmt.Sprintf("%s%sreturn result\n", this.Indent, this.Indent)
+		result += fmt.Sprintf("%s}\n\n", t.Indent)
+	}
+
+	if t.CreateEmptyObject {
+		result += fmt.Sprintf("\n%sstatic emptyObject(): %s {\n", t.Indent, entityName)
+		result += fmt.Sprintf("%s%svar result = new %s()\n", t.Indent, t.Indent, entityName)
+		result += builder.createEmptyObjectBody
+		result += fmt.Sprintf("%s%sreturn result\n", t.Indent, t.Indent)
+		result += fmt.Sprintf("%s}\n\n", t.Indent)
 	}
 
 	if customCode != nil {
 		code := customCode[entityName]
-		result += this.Indent + "//[" + entityName + ":]\n" + code + "\n\n" + this.Indent + "//[end]\n"
+		if code != "" {
+			result += t.Indent + "//[" + entityName + ":]\n" + code + "\n\n" + t.Indent + "//[end]\n"
+		}
 	}
 
 	result += "}"
 
-	this.alreadyConverted[typeOf] = true
-
 	return result, nil
 }
 
-type typeScriptClassBuilder struct {
-	types                map[reflect.Kind]string
-	indent               string
-	fields               string
-	createFromMethodBody string
+func (t *TypeScriptify) parseTag(field reflect.StructField) (optional bool, err error) {
+	tag := field.Tag.Get("typescriptify")
+	for _, v := range strings.Split(tag, ",") {
+		switch v {
+		case "optional":
+			optional = true
+		}
+	}
+	return
 }
 
-func (this *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
-	if typeScriptType, ok := this.types[kind]; ok {
+type typeScriptClassBuilder struct {
+	types                 map[reflect.Kind]string
+	structTypes           map[string]reflect.Type
+	indent                string
+	fields                string
+	createFromMethodBody  string
+	createEmptyObjectBody string
+
+	AllOptional bool
+}
+
+func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
+	if typeScriptType, ok := t.types[kind]; ok {
 		if len(fieldName) > 0 {
-			this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, typeScriptType)
-			this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
+			t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
+			// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"]\n", this.indent, this.indent, fieldName, fieldName)
+			fieldEmptyValue := "[]"
+			t.createEmptyObjectBody += fmt.Sprintf("%s%sresult.%s = %s\n", t.indent, t.indent, fieldName, fieldEmptyValue)
+			t.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", t.indent, t.indent, fieldName, fieldName, fieldName)
 			return nil
 		}
 	}
 	return errors.New(fmt.Sprintf("Cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
-func (this *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind) error {
-	if typeScriptType, ok := this.types[kind]; ok {
+func (t *typeScriptClassBuilder) AddSimpleField(fieldName, fieldType string, kind reflect.Kind, isPtr bool, isOptional bool) error {
+	optional := ""
+	if t.AllOptional || isPtr || isOptional {
+		optional = "?"
+	}
+	if typeScriptType, ok := t.types[kind]; ok {
 		if len(fieldName) > 0 {
-			this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, typeScriptType)
-			this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", this.indent, this.indent, fieldName, fieldName)
+			t.fields += fmt.Sprintf("%s%s%s: %s;\n", t.indent, fieldName, optional, typeScriptType)
+			// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"]\n", this.indent, this.indent, fieldName, fieldName)
+			fieldEmptyValue := ""
+			if typeScriptType == "string" {
+				fieldEmptyValue = "\"\""
+			} else if typeScriptType == "number" {
+				fieldEmptyValue = "0"
+			} else if typeScriptType == "boolean" {
+				fieldEmptyValue = "false"
+			} else if typeScriptType == "any" {
+				fieldEmptyValue = "null"
+			}
+			t.createEmptyObjectBody += fmt.Sprintf("%s%sresult.%s = %s\n", t.indent, t.indent, fieldName, fieldEmptyValue)
+			t.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", t.indent, t.indent, fieldName, fieldName, fieldName)
 			return nil
 		}
 	}
 	return errors.New("Cannot find type for " + fieldType)
 }
 
-func (this *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
-	this.fields += fmt.Sprintf("%s%s: %s;\n", this.indent, fieldName, fieldType)
-	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldType, fieldName)
+func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isPtr bool, isOptional bool) {
+	optional := ""
+	if t.AllOptional || isPtr || isOptional {
+		optional = "?"
+	}
+	t.fields += fmt.Sprintf("%s%s%s: %s;\n", t.indent, fieldName, optional, fieldType)
+	// createCall := fieldType + ".createFrom"
+	// if fieldType == "Date" || fieldType == "string" || fieldType == "any" || strings.HasPrefix(fieldType, "{") {
+	// 	createCall = "" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
+	// }
+	// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s(source[\"%s\"]) : null\n", this.indent, this.indent, fieldName, fieldName, createCall, fieldName)
+	fieldEmptyValue := fmt.Sprintf("%s.emptyObject()", fieldType)
+	if fieldType == "string" || fieldType == "any" {
+		fieldEmptyValue = "\"\"" // for Date, keep the string..., because JS won't deserialize to Date object automatically...
+	}
+	if strings.HasPrefix(fieldType, "{") {
+		fieldEmptyValue = "null"
+	}
+	if fieldType == "Date" {
+		fieldEmptyValue = "null"
+		t.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = new Date(init.%s as any)\n", t.indent, t.indent, fieldName, fieldName, fieldName)
+	} else {
+		t.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", t.indent, t.indent, fieldName, fieldName, fieldName)
+	}
+	t.createEmptyObjectBody += fmt.Sprintf("%s%sresult.%s = %s\n", t.indent, t.indent, fieldName, fieldEmptyValue)
+
 }
 
-func (this *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
-	this.fields += fmt.Sprintf("%s%s: %s[];\n", this.indent, fieldName, fieldType)
-	this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, fieldType)
+func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
+	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
+	// createCall := fieldType + ".createFrom"
+	// if fieldType == "Date" || fieldType == "string" {
+	// 	createCall = ""
+	// }
+	// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s(element); }) : null;\n", this.indent, this.indent, fieldName, fieldName, fieldName, createCall)
+	fieldEmptyValue := "[]"
+	t.createEmptyObjectBody += fmt.Sprintf("%s%sresult.%s = %s\n", t.indent, t.indent, fieldName, fieldEmptyValue)
+
+	t.createFromMethodBody += fmt.Sprintf("%s%sif (init.%s) this.%s = init.%s\n", t.indent, t.indent, fieldName, fieldName, fieldName)
 }
