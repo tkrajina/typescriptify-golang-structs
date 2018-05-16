@@ -357,6 +357,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				}
 				if !isDateField {
 					t.structTypes[fieldTypeName] = fieldType
+					fieldTypeName = t.Prefix + fieldTypeName
 				}
 				builder.AddStructField(jsonFieldName, fieldTypeName, isPtr, isOptional)
 
@@ -387,10 +388,10 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					}
 
 				} else if elemType.Kind() == reflect.Interface {
-					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind())
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind(), isOptional)
 				} else {
 					// Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind())
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind(), isOptional)
 				}
 
 			} else {
@@ -455,10 +456,15 @@ type typeScriptClassBuilder struct {
 	AllOptional bool
 }
 
-func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
+func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind, isOptional bool) error {
+	optional := ""
+	if t.AllOptional || isOptional {
+		optional = "?"
+	}
+
 	if typeScriptType, ok := t.types[kind]; ok {
 		if len(fieldName) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
+			t.fields += fmt.Sprintf("%s%s%s: %s[];\n", t.indent, fieldName, optional, typeScriptType)
 			// this.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"]\n", this.indent, this.indent, fieldName, fieldName)
 			fieldEmptyValue := "[]"
 			t.createEmptyObjectBody += fmt.Sprintf("%s%sresult.%s = %s\n", t.indent, t.indent, fieldName, fieldEmptyValue)
