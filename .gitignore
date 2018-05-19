@@ -1,6 +1,5 @@
-*.sw?
-*.backup
-tmp_*
+.idea/
+*.iml
 tags
 
 .idea/
