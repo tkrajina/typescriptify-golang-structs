@@ -382,16 +382,16 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					result = typeScriptChunk + "\n" + result
 					t.structTypes[elemTypeName] = elemType
 					if elemType.Name() != "" {
-						builder.AddArrayOfStructsField(jsonFieldName, t.Prefix + elemType.Name() + t.Suffix)
+						builder.AddArrayOfStructsField(jsonFieldName, t.Prefix + elemType.Name() + t.Suffix, isPtr, isOptional)
 					} else {
-						builder.AddArrayOfStructsField(jsonFieldName, t.Prefix + elemTypeName + t.Suffix)
+						builder.AddArrayOfStructsField(jsonFieldName, t.Prefix + elemTypeName + t.Suffix, isPtr, isOptional)
 					}
 
 				} else if elemType.Kind() == reflect.Interface {
-					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind(), isOptional)
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind(), isPtr,  isOptional)
 				} else {
 					// Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind(), isOptional)
+					err = builder.AddSimpleArrayField(jsonFieldName, elemType.Name(), elemType.Kind(), isPtr, isOptional)
 				}
 
 			} else {
@@ -456,9 +456,9 @@ type typeScriptClassBuilder struct {
 	AllOptional bool
 }
 
-func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind, isOptional bool) error {
+func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind, isPtr, isOptional bool) error {
 	optional := ""
-	if t.AllOptional || isOptional {
+	if t.AllOptional || isPtr || isOptional {
 		optional = "?"
 	}
 
@@ -530,8 +530,12 @@ func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string, isP
 
 }
 
-func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
-	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
+func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string, isPtr, isOptional bool) {
+	optional := ""
+	if t.AllOptional || isPtr || isOptional {
+		optional = "?"
+	}
+	t.fields += fmt.Sprintf("%s%s%s: %s[];\n", t.indent, fieldName, optional, fieldType)
 	// createCall := fieldType + ".createFrom"
 	// if fieldType == "Date" || fieldType == "string" {
 	// 	createCall = ""
