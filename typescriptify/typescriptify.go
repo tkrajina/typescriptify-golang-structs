@@ -17,6 +17,7 @@ type TypeScriptify struct {
 	Suffix            string
 	Indent            string
 	CreateConstructor bool
+	CreateFromMethod  bool
 	CreateEmptyObject bool
 	UseInterface      bool
 	BackupExtension   string // If empty no backup
@@ -66,7 +67,8 @@ func New() *TypeScriptify {
 	result.structTypes = make(map[string]reflect.Type)
 
 	result.Indent = "    "
-	result.CreateConstructor = true
+	result.CreateFromMethod = true
+	result.CreateConstructor = false
 
 	return result
 }
@@ -401,6 +403,13 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 
 	result += builder.fields
+	if t.CreateFromMethod {
+		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
+		result += fmt.Sprintf("%s%svar result = new %s();\n", t.Indent, t.Indent, entityName)
+		result += builder.createFromMethodBody
+		result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
+		result += fmt.Sprintf("%s}\n\n", t.Indent)
+	}
 	if t.CreateConstructor {
 		result += fmt.Sprintf("\n%sconstructor(init?: %s) {\n", t.Indent, entityName)
 		result += fmt.Sprintf("%s%sif (!init) return\n", t.Indent, t.Indent)
