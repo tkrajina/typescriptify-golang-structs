@@ -13,14 +13,16 @@ import (
 )
 
 type TypeScriptify struct {
-	Prefix            string
-	Suffix            string
-	Indent            string
-	CreateConstructor bool
-	CreateFromMethod  bool
-	CreateEmptyObject bool
-	UseInterface      bool
-	BackupExtension   string // If empty no backup
+	Prefix              string
+	Suffix              string
+	Indent              string
+	CreateConstructor   bool
+	CreateFromMethod    bool
+	CreateEmptyObject   bool
+	UseInterface        bool
+	ExportModels        bool
+	CreateAllModelTypes bool
+	BackupExtension     string // If empty no backup
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
@@ -69,6 +71,8 @@ func New() *TypeScriptify {
 	result.Indent = "    "
 	result.CreateFromMethod = true
 	result.CreateConstructor = false
+	result.CreateAllModelTypes = false
+	result.ExportModels = false
 
 	return result
 }
@@ -128,7 +132,9 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 		structItems += fmt.Sprintf("\"%s\":%s,\n", tsStructTypeName, tsStructTypeName)
 	}
 
-	result += fmt.Sprintf("\nexport let AllModelTypes = {\n%s}\n", structItems)
+	if t.CreateAllModelTypes {
+		result += fmt.Sprintf("\nexport let AllModelTypes = {\n%s}\n", structItems)
+	}
 
 	return result, nil
 }
@@ -265,7 +271,10 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		typeKind = "interface"
 	}
 	t.structTypes[entityName] = typeOf
-	result := fmt.Sprintf("export %s %s {\n", typeKind, entityName)
+	result := fmt.Sprintf("%s %s {\n", typeKind, entityName)
+	if t.ExportModels {
+		result = "export " + result
+	}
 	builder := typeScriptClassBuilder{
 		types:       t.types,
 		structTypes: t.structTypes,
