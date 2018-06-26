@@ -16,6 +16,7 @@ type TypeScriptify struct {
 	Indent           string
 	CreateFromMethod bool
 	BackupExtension  string // If empty no backup
+	DontExport       bool
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
@@ -210,6 +211,9 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 
 	entityName := fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, typeOf.Name())
 	result := fmt.Sprintf("class %s {\n", entityName)
+	if !t.DontExport {
+		result = "export " + result
+	}
 	builder := typeScriptClassBuilder{
 		types:  t.types,
 		indent: t.Indent,
