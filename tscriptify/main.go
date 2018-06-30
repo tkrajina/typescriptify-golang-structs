@@ -3,15 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
 	"time"
-	"go/ast"
-	"go/parser"
-	"go/token"
 )
 
 const TEMPLATE = `package main
@@ -38,13 +38,15 @@ type Params struct {
 	ModelsPackage string
 	TargetFile    string
 	Structs       []string
+	BackupDir     string
 }
 
 func main() {
-	var packagePath, target, stringExtension string
+	var packagePath, target, stringExtension, backupDir string
 	flag.StringVar(&packagePath, "package", "", "Path of the package with models")
 	flag.StringVar(&target, "target", "", "Target typescript file")
 	flag.StringVar(&stringExtension, "extension", "", "")
+	flag.StringVar(&backupDir, "backup", ".", "Directory where backup files are saved")
 	flag.Parse()
 
 	structs := []string{}
@@ -94,8 +96,13 @@ func main() {
 		}
 	}
 
-	params := Params{Structs: structsArr, ModelsPackage: packagePath, TargetFile: target}
-	err = t.Execute(f, params)
+	p := Params{
+		Structs:       structsArr,
+		ModelsPackage: packagePath,
+		TargetFile:    target,
+		BackupDir:     backupDir,
+	}
+	err = t.Execute(f, p)
 	handleErr(err)
 
 	cmd := exec.Command("go", "run", filename)
