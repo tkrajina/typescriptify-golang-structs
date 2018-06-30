@@ -18,6 +18,17 @@ Or by using it from your code:
         panic(err.Error())
     }
 
+Command line options:
+
+    $ tscriptify --help
+    Usage of tscriptify:
+    -backup string
+            Directory where backup files are saved
+    -package string
+            Path of the package with models
+    -target string
+            Target typescript file
+
 ## Models and conversion
 
 If the `Person` structs contain a reference to the `Address` struct, then you don't have to add `Address` explicitly. Only fields with a valid `json` tag will be converted to TypeScript models.
