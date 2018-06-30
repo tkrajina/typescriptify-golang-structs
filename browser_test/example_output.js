@@ -1,5 +1,7 @@
+"use strict";
 /* Do not change, this code is generated from Golang structs */
-var Address = (function () {
+exports.__esModule = true;
+var Address = /** @class */ (function () {
     function Address() {
         var _this = this;
         //[Address:]
@@ -7,6 +9,7 @@ var Address = (function () {
         this.getAddressString = function () {
             return _this.city + " " + _this.number;
         };
+        //[end]
     }
     Address.createFrom = function (source) {
         var result = new Address();
@@ -16,14 +19,16 @@ var Address = (function () {
         return result;
     };
     return Address;
-})();
-var PersonalInfo = (function () {
+}());
+exports.Address = Address;
+var PersonalInfo = /** @class */ (function () {
     function PersonalInfo() {
         var _this = this;
         //[PersonalInfo:]
         this.getPersonalInfoString = function () {
             return "pet:" + _this.pet_name;
         };
+        //[end]
     }
     PersonalInfo.createFrom = function (source) {
         var result = new PersonalInfo();
@@ -32,14 +37,16 @@ var PersonalInfo = (function () {
         return result;
     };
     return PersonalInfo;
-})();
-var Person = (function () {
+}());
+exports.PersonalInfo = PersonalInfo;
+var Person = /** @class */ (function () {
     function Person() {
         var _this = this;
         //[Person:]
         this.getInfo = function () {
             return "name:" + _this.name;
         };
+        //[end]
     }
     Person.createFrom = function (source) {
         var result = new Person();
@@ -50,4 +57,5 @@ var Person = (function () {
         return result;
     };
     return Person;
-})();
+}());
+exports.Person = Person;

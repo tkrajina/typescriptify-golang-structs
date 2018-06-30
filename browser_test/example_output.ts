@@ -1,7 +1,7 @@
 /* Do not change, this code is generated from Golang structs */
 
 
-class Address {
+export class Address {
     city: string;
     number: number;
     country: string;
@@ -23,7 +23,7 @@ class Address {
 
     //[end]
 }
-class PersonalInfo {
+export class PersonalInfo {
     hobby: string[];
     pet_name: string;
 
@@ -42,7 +42,7 @@ class PersonalInfo {
 
     //[end]
 }
-class Person {
+export class Person {
     name: string;
     personal_info: PersonalInfo;
     nicknames: string[];
