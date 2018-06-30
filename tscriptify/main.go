@@ -25,6 +25,8 @@ import (
 
 func main() {
 	t := typescriptify.New()
+{{ range $key, $value := .InitParams }}	t.{{ $key }}={{ $value }}
+{{ end }}
 {{ range .Structs }}	t.Add({{ . }}{})
 {{ end }}
 	err := t.ConvertToFile("{{ .TargetFile }}")
@@ -38,15 +40,14 @@ type Params struct {
 	ModelsPackage string
 	TargetFile    string
 	Structs       []string
-	BackupDir     string
+	InitParams    map[string]interface{}
 }
 
 func main() {
-	var packagePath, target, stringExtension, backupDir string
+	var packagePath, target, backupDir string
 	flag.StringVar(&packagePath, "package", "", "Path of the package with models")
 	flag.StringVar(&target, "target", "", "Target typescript file")
-	flag.StringVar(&stringExtension, "extension", "", "")
-	flag.StringVar(&backupDir, "backup", ".", "Directory where backup files are saved")
+	flag.StringVar(&backupDir, "backup", "", "Directory where backup files are saved")
 	flag.Parse()
 
 	structs := []string{}
@@ -100,7 +101,9 @@ func main() {
 		Structs:       structsArr,
 		ModelsPackage: packagePath,
 		TargetFile:    target,
-		BackupDir:     backupDir,
+		InitParams: map[string]interface{}{
+			"BackupDir": fmt.Sprintf(`"%s"`, backupDir),
+		},
 	}
 	err = t.Execute(f, p)
 	handleErr(err)

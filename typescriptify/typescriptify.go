@@ -158,19 +158,12 @@ func (t TypeScriptify) backup(fileName string) error {
 		return err
 	}
 
-	backupFn := fmt.Sprintf("%s-%s.backup", fileName, time.Now().Format("2006-01-02T15_04_05.99"))
-	fileOut, err := os.Create(path.Join(t.BackupDir, backupFn))
-	if err != nil {
-		return err
-	}
-	defer fileOut.Close()
-
-	_, err = fileOut.Write(bytes)
-	if err != nil {
-		return err
+	_, backupFn := path.Split(fmt.Sprintf("%s-%s.backup", fileName, time.Now().Format("2006-01-02T15_04_05.99")))
+	if t.BackupDir != "" {
+		backupFn = path.Join(t.BackupDir, backupFn)
 	}
 
-	return nil
+	return ioutil.WriteFile(backupFn, bytes, os.FileMode(0700))
 }
 
 func (t TypeScriptify) ConvertToFile(fileName string) error {
