@@ -25,6 +25,7 @@ func main() {
 	converter := typescriptify.New()
 	converter.CreateFromMethod = true
 	converter.Indent = "    "
+	converter.BackupDir = ""
 
 	converter.Add(Person{})
 

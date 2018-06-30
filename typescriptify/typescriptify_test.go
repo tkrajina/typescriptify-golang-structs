@@ -37,6 +37,7 @@ func TestTypescriptifyWithTypes(t *testing.T) {
 
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.CreateFromMethod = false
+	converter.BackupDir = ""
 
 	desiredResult := `export class Dummy {
         something: string;
@@ -61,6 +62,7 @@ func TestTypescriptifyWithInstances(t *testing.T) {
 	converter.Add(Dummy{})
 	converter.CreateFromMethod = false
 	converter.DontExport = true
+	converter.BackupDir = ""
 
 	desiredResult := `class Dummy {
         something: string;
@@ -84,6 +86,7 @@ func TestTypescriptifyWithDoubleClasses(t *testing.T) {
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.CreateFromMethod = false
+	converter.BackupDir = ""
 
 	desiredResult := `export class Dummy {
         something: string;
@@ -110,6 +113,7 @@ func TestWithPrefixes(t *testing.T) {
 	converter.Add(Dummy{})
 	converter.CreateFromMethod = false
 	converter.DontExport = true
+	converter.BackupDir = ""
 
 	desiredResult := `class test_Address {
         duration: number;

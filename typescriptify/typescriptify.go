@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ type TypeScriptify struct {
 	Suffix           string
 	Indent           string
 	CreateFromMethod bool
-	BackupExtension  string // If empty no backup
+	BackupDir        string // If empty no backup
 	DontExport       bool
 
 	golangTypes []reflect.Type
@@ -28,7 +29,7 @@ type TypeScriptify struct {
 func New() *TypeScriptify {
 	result := new(TypeScriptify)
 	result.Indent = "\t"
-	result.BackupExtension = "backup"
+	result.BackupDir = "."
 
 	types := make(map[reflect.Kind]string)
 
@@ -157,7 +158,8 @@ func (t TypeScriptify) backup(fileName string) error {
 		return err
 	}
 
-	fileOut, err := os.Create(fmt.Sprintf("%s-%s.%s", fileName, time.Now().Format("2006-01-02T15_04_05.99"), t.BackupExtension))
+	backupFn := fmt.Sprintf("%s-%s.backup", fileName, time.Now().Format("2006-01-02T15_04_05.99"))
+	fileOut, err := os.Create(path.Join(t.BackupDir, backupFn))
 	if err != nil {
 		return err
 	}
@@ -172,7 +174,7 @@ func (t TypeScriptify) backup(fileName string) error {
 }
 
 func (t TypeScriptify) ConvertToFile(fileName string) error {
-	if len(t.BackupExtension) > 0 {
+	if len(t.BackupDir) > 0 {
 		err := t.backup(fileName)
 		if err != nil {
 			return err
