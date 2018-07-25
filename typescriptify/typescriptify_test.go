@@ -153,3 +153,20 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string)
 		}
 	}
 }
+
+func TestTypescriptifyCustomType(t *testing.T) {
+	type TestCustomType struct {
+		Map map[string]int `json:"map" ts_type:"{[key: string]: number}"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(TestCustomType{}))
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+
+	desiredResult := `export class TestCustomType {
+        map: {[key: string]: number};
+}`
+	testConverter(t, converter, desiredResult)
+}
