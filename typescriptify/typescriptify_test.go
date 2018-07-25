@@ -187,7 +187,8 @@ func TestDate(t *testing.T) {
     time: Date;
 
     static createFrom(source: any) {
-        var result = new TestCustomType();
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new TestCustomType();
         result.time = new Date(source["time"]);
         return result;
     }

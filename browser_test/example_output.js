@@ -12,6 +12,8 @@ var Address = /** @class */ (function () {
         //[end]
     }
     Address.createFrom = function (source) {
+        if ('string' === typeof source)
+            source = JSON.parse(source);
         var result = new Address();
         result.city = source["city"];
         result.number = source["number"];
@@ -31,6 +33,8 @@ var PersonalInfo = /** @class */ (function () {
         //[end]
     }
     PersonalInfo.createFrom = function (source) {
+        if ('string' === typeof source)
+            source = JSON.parse(source);
         var result = new PersonalInfo();
         result.hobby = source["hobby"];
         result.pet_name = source["pet_name"];
@@ -49,6 +53,8 @@ var Person = /** @class */ (function () {
         //[end]
     }
     Person.createFrom = function (source) {
+        if ('string' === typeof source)
+            source = JSON.parse(source);
         var result = new Person();
         result.name = source["name"];
         result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;

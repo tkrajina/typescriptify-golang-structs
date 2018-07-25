@@ -264,7 +264,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	result += builder.fields
 	if t.CreateFromMethod {
 		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
-		result += fmt.Sprintf("%s%svar result = new %s();\n", t.Indent, t.Indent, entityName)
+		result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
+		result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
 		result += builder.createFromMethodBody
 		result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
 		result += fmt.Sprintf("%s}\n\n", t.Indent)

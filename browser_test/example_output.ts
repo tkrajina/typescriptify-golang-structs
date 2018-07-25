@@ -7,7 +7,8 @@ export class Address {
     country: string;
 
     static createFrom(source: any) {
-        var result = new Address();
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Address();
         result.city = source["city"];
         result.number = source["number"];
         result.country = source["country"];
@@ -28,7 +29,8 @@ export class PersonalInfo {
     pet_name: string;
 
     static createFrom(source: any) {
-        var result = new PersonalInfo();
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new PersonalInfo();
         result.hobby = source["hobby"];
         result.pet_name = source["pet_name"];
         return result;
@@ -49,7 +51,8 @@ export class Person {
     addresses: Address[];
 
     static createFrom(source: any) {
-        var result = new Person();
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Person();
         result.name = source["name"];
         result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
         result.nicknames = source["nicknames"];
