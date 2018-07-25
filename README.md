@@ -77,6 +77,8 @@ In TypeScript you can just cast your javascript object in any of those models:
     // The TypeScript compiler will throw an error for this line
     console.log(person.something);
 
+## Custom Typescript code
+
 Any custom code can be added to Typescript models:
 
     class Address {
@@ -137,8 +139,43 @@ If you use golang JSON structs as responses from your API, you may want to have 
 
 The model name will be `API_Person` instead of `Person`.
 
-License
--------
+## Custom types
+
+If your field has a type not supported by typescriptify which can be JSONized as is, then you can use the `ts_type` tag to specify the typescript type to use:
+
+    type Data struct {
+        Counters map[string]int `json:"counters" ts_type:"{[key: string]: number}"`
+    }
+
+...results with...
+
+    export class Data {
+            counters: {[key: string]: number};
+    }
+
+If the JSON field needs some special handling before converting it to a javascript object, use `ts_transform`.
+For example, Dates can be handles this way:
+
+	type Data struct {
+		Time time.Time `json:"time" ts_type:"Date" ts_transform:"new Date(__VALUE__)"`
+	}
+
+Generated typescript:
+
+    export class Data {
+        time: Date;
+
+        static createFrom(source: any) {
+            var result = new TestCustomType();
+            result.time = new Date(source["time"]);
+            return result;
+        }
+
+    }
+
+In this case, you should always use `Data.createFrom(json)` instead of just casting `<Data>json`.
+
+## License
 
 This library is licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
