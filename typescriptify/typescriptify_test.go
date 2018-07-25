@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type Address struct {
@@ -167,6 +168,30 @@ func TestTypescriptifyCustomType(t *testing.T) {
 
 	desiredResult := `export class TestCustomType {
         map: {[key: string]: number};
+}`
+	testConverter(t, converter, desiredResult)
+}
+
+func TestDate(t *testing.T) {
+	type TestCustomType struct {
+		Time time.Time `json:"time" ts_type:"Date" ts_transform:"new Date(__VALUE__)"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(TestCustomType{}))
+	converter.CreateFromMethod = true
+	converter.BackupDir = ""
+
+	desiredResult := `export class TestCustomType {
+    time: Date;
+
+    static createFrom(source: any) {
+        var result = new TestCustomType();
+        result.time = new Date(source["time"]);
+        return result;
+    }
+
 }`
 	testConverter(t, converter, desiredResult)
 }

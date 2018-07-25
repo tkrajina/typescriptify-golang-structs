@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+const (
+	tsTransformTag = "ts_transform"
+	tsType         = "ts_type"
+)
+
 type TypeScriptify struct {
 	Prefix           string
 	Suffix           string
@@ -226,7 +231,10 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		}
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
-			if field.Type.Kind() == reflect.Struct { // Struct:
+			customTransformation := field.Tag.Get(tsTransformTag)
+			if customTransformation != "" {
+				err = builder.AddSimpleField(jsonFieldName, field)
+			} else if field.Type.Kind() == reflect.Struct { // Struct:
 				typeScriptChunk, err := t.convertType(field.Type, customCode)
 				if err != nil {
 					return "", err
@@ -289,21 +297,29 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string
 			return nil
 		}
 	}
-	return errors.New(fmt.Sprintf("Cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
+	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
 func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {
 	fieldType, kind := field.Type.Name(), field.Type.Kind()
-	customTSType := field.Tag.Get("ts_type")
+	customTSType := field.Tag.Get(tsType)
 
 	typeScriptType := t.types[kind]
 	if len(customTSType) > 0 {
 		typeScriptType = customTSType
 	}
 
+	customTransformation := field.Tag.Get(tsTransformTag)
+
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
 		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
-		t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+		if customTransformation == "" {
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+		} else {
+			val := fmt.Sprintf(`source["%s"]`, fieldName)
+			expression := strings.Replace(customTransformation, "__VALUE__", val, -1)
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = %s;\n", t.indent, t.indent, fieldName, expression)
+		}
 		return nil
 	}
 
