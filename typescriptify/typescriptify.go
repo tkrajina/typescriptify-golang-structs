@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/tkrajina/go-reflector/reflector"
 )
 
 const (
@@ -24,7 +26,7 @@ type TypeScriptify struct {
 	BackupDir        string // If empty no backup
 	DontExport       bool
 
-	golangTypes []reflect.Type
+	golangTypes []*reflector.Obj
 	types       map[reflect.Kind]string
 
 	// throwaway, used when converting
@@ -63,46 +65,21 @@ func New() *TypeScriptify {
 	return result
 }
 
-func deepFields(typeOf reflect.Type) []reflect.StructField {
-	fields := make([]reflect.StructField, 0)
-
-	if typeOf.Kind() == reflect.Ptr {
-		typeOf = typeOf.Elem()
-	}
-
-	if typeOf.Kind() != reflect.Struct {
-		return fields
-	}
-
-	for i := 0; i < typeOf.NumField(); i++ {
-		f := typeOf.Field(i)
-
-		kind := f.Type.Kind()
-		if f.Anonymous && kind == reflect.Struct {
-			//fmt.Println(v.Interface())
-			fields = append(fields, deepFields(f.Type)...)
-		} else {
-			fields = append(fields, f)
-		}
-	}
-
-	return fields
-}
-
 func (t *TypeScriptify) Add(obj interface{}) {
-	t.AddType(reflect.TypeOf(obj))
+	t.golangTypes = append(t.golangTypes, reflector.New(obj))
 }
 
-func (t *TypeScriptify) AddType(typeOf reflect.Type) {
-	t.golangTypes = append(t.golangTypes, typeOf)
+func (t *TypeScriptify) AddType(obj reflect.Type) {
+	fmt.Println("Adding", obj.Name())
+	t.golangTypes = append(t.golangTypes, reflector.New(reflect.New(obj).Elem().Interface()))
 }
 
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 	t.alreadyConverted = make(map[reflect.Type]bool)
 
 	result := ""
-	for _, typeof := range t.golangTypes {
-		typeScriptCode, err := t.convertType(typeof, customCode)
+	for _, obj := range t.golangTypes {
+		typeScriptCode, err := t.convertType(obj, customCode)
 		if err != nil {
 			return "", err
 		}
@@ -153,7 +130,7 @@ func (t TypeScriptify) backup(fileName string) error {
 		if !os.IsNotExist(err) {
 			return err
 		}
-		// No neet to backup, just return:
+		// No need to backup, just return:
 		return nil
 	}
 	defer fileIn.Close()
@@ -204,12 +181,15 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 	return nil
 }
 
-func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
-	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
+func (t *TypeScriptify) convertType(obj *reflector.Obj, customCode map[string]string) (string, error) {
+	if _, found := t.alreadyConverted[obj.Type()]; found { // Already converted
 		return "", nil
 	}
 
-	entityName := fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, typeOf.Name())
+	entityName := fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, obj.Type().Name())
+	if entityName == "" {
+		return "", errors.New("empty entity name")
+	}
 	result := fmt.Sprintf("class %s {\n", entityName)
 	if !t.DontExport {
 		result = "export " + result
@@ -219,9 +199,11 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		indent: t.Indent,
 	}
 
-	fields := deepFields(typeOf)
-	for _, field := range fields {
-		jsonTag := field.Tag.Get("json")
+	for _, field := range obj.FieldsFlattened() {
+		jsonTag, err := field.Tag("json")
+		if err != nil {
+			return "", err
+		}
 		jsonFieldName := ""
 		if len(jsonTag) > 0 {
 			jsonTagParts := strings.Split(jsonTag, ",")
@@ -231,26 +213,29 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		}
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
-			customTransformation := field.Tag.Get(tsTransformTag)
+			customTransformation, err := field.Tag(tsTransformTag)
+			if err != nil {
+				return "", err
+			}
 			if customTransformation != "" {
 				err = builder.AddSimpleField(jsonFieldName, field)
-			} else if field.Type.Kind() == reflect.Struct { // Struct:
-				typeScriptChunk, err := t.convertType(field.Type, customCode)
+			} else if field.Kind() == reflect.Struct { // Struct:
+				typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type()).Elem().Interface()), customCode)
 				if err != nil {
 					return "", err
 				}
 				result = typeScriptChunk + "\n" + result
-				builder.AddStructField(jsonFieldName, field.Type.Name())
-			} else if field.Type.Kind() == reflect.Slice { // Slice:
-				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-					typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
+				builder.AddStructField(jsonFieldName, field.Name())
+			} else if field.Kind() == reflect.Slice { // Slice:
+				if field.Type().Elem().Kind() == reflect.Struct { // Slice of structs:
+					typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
 					if err != nil {
 						return "", err
 					}
 					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, field.Type.Elem().Name())
+					builder.AddArrayOfStructsField(jsonFieldName, field.Type().Elem().Name())
 				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field.Type.Elem().Name(), field.Type.Elem().Kind())
+					err = builder.AddSimpleArrayField(jsonFieldName, field.Type().Elem().Name(), field.Type().Elem().Kind())
 				}
 			} else { // Simple field:
 				err = builder.AddSimpleField(jsonFieldName, field)
@@ -278,7 +263,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 
 	result += "}"
 
-	t.alreadyConverted[typeOf] = true
+	t.alreadyConverted[obj.Type()] = true
 
 	return result, nil
 }
@@ -301,16 +286,22 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string
 	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
-func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {
-	fieldType, kind := field.Type.Name(), field.Type.Kind()
-	customTSType := field.Tag.Get(tsType)
+func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflector.ObjField) error {
+	fieldType, kind := field.Name(), field.Kind()
+	customTSType, err := field.Tag(tsType)
+	if err != nil {
+		return err
+	}
 
 	typeScriptType := t.types[kind]
 	if len(customTSType) > 0 {
 		typeScriptType = customTSType
 	}
 
-	customTransformation := field.Tag.Get(tsTransformTag)
+	customTransformation, err := field.Tag(tsTransformTag)
+	if err != nil {
+		return err
+	}
 
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
 		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
