@@ -16,6 +16,10 @@ import (
 const (
 	tsTransformTag = "ts_transform"
 	tsType         = "ts_type"
+
+	tsString  = "string"
+	tsBoolean = "boolean"
+	tsNumber  = "number"
 )
 
 type TypeScriptify struct {
@@ -40,22 +44,22 @@ func New() *TypeScriptify {
 
 	types := make(map[reflect.Kind]string)
 
-	types[reflect.Bool] = "boolean"
+	types[reflect.Bool] = tsBoolean
 
-	types[reflect.Int] = "number"
-	types[reflect.Int8] = "number"
-	types[reflect.Int16] = "number"
-	types[reflect.Int32] = "number"
-	types[reflect.Int64] = "number"
-	types[reflect.Uint] = "number"
-	types[reflect.Uint8] = "number"
-	types[reflect.Uint16] = "number"
-	types[reflect.Uint32] = "number"
-	types[reflect.Uint64] = "number"
-	types[reflect.Float32] = "number"
-	types[reflect.Float64] = "number"
+	types[reflect.Int] = tsNumber
+	types[reflect.Int8] = tsNumber
+	types[reflect.Int16] = tsNumber
+	types[reflect.Int32] = tsNumber
+	types[reflect.Int64] = tsNumber
+	types[reflect.Uint] = tsNumber
+	types[reflect.Uint8] = tsNumber
+	types[reflect.Uint16] = tsNumber
+	types[reflect.Uint32] = tsNumber
+	types[reflect.Uint64] = tsNumber
+	types[reflect.Float32] = tsNumber
+	types[reflect.Float64] = tsNumber
 
-	types[reflect.String] = "string"
+	types[reflect.String] = tsString
 
 	result.types = types
 
@@ -70,7 +74,6 @@ func (t *TypeScriptify) Add(obj interface{}) {
 }
 
 func (t *TypeScriptify) AddType(obj reflect.Type) {
-	fmt.Println("Adding", obj.Name())
 	t.golangTypes = append(t.golangTypes, reflector.New(reflect.New(obj).Elem().Interface()))
 }
 
@@ -190,9 +193,9 @@ func (t *TypeScriptify) convertType(obj *reflector.Obj, customCode map[string]st
 	if entityName == "" {
 		return "", errors.New("empty entity name")
 	}
-	result := fmt.Sprintf("class %s {\n", entityName)
+	result := []string{fmt.Sprintf("class %s {", entityName)}
 	if !t.DontExport {
-		result = "export " + result
+		result[0] = "export " + result[0]
 	}
 	builder := typeScriptClassBuilder{
 		types:  t.types,
@@ -200,71 +203,81 @@ func (t *TypeScriptify) convertType(obj *reflector.Obj, customCode map[string]st
 	}
 
 	for _, field := range obj.FieldsFlattened() {
-		jsonTag, err := field.Tag("json")
+		lines, err := t.convertTypeField(&builder, field, customCode)
 		if err != nil {
 			return "", err
 		}
-		jsonFieldName := ""
-		if len(jsonTag) > 0 {
-			jsonTagParts := strings.Split(jsonTag, ",")
-			if len(jsonTagParts) > 0 {
-				jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
-			}
-		}
-		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
-			var err error
-			customTransformation, err := field.Tag(tsTransformTag)
-			if err != nil {
-				return "", err
-			}
-			if customTransformation != "" {
-				err = builder.AddSimpleField(jsonFieldName, field)
-			} else if field.Kind() == reflect.Struct { // Struct:
-				typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type()).Elem().Interface()), customCode)
-				if err != nil {
-					return "", err
-				}
-				result = typeScriptChunk + "\n" + result
-				builder.AddStructField(jsonFieldName, field.Name())
-			} else if field.Kind() == reflect.Slice { // Slice:
-				if field.Type().Elem().Kind() == reflect.Struct { // Slice of structs:
-					typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
-					if err != nil {
-						return "", err
-					}
-					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, field.Type().Elem().Name())
-				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field.Type().Elem().Name(), field.Type().Elem().Kind())
-				}
-			} else { // Simple field:
-				err = builder.AddSimpleField(jsonFieldName, field)
-			}
-			if err != nil {
-				return "", err
-			}
-		}
+		result = append(lines, result...)
 	}
 
-	result += builder.fields
+	result = append(result, strings.TrimRight(builder.fields, "\n "))
 	if t.CreateFromMethod {
-		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
-		result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
-		result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
-		result += builder.createFromMethodBody
-		result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
-		result += fmt.Sprintf("%s}\n\n", t.Indent)
+		result = append(result, fmt.Sprintf("\n%sstatic createFrom(source: any) {", t.Indent))
+		result = append(result, fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);", t.Indent, t.Indent))
+		result = append(result, fmt.Sprintf("%s%sconst result = new %s();", t.Indent, t.Indent, entityName))
+		result = append(result, strings.TrimRight(builder.createFromMethodBody, "\n "))
+		result = append(result, fmt.Sprintf("%s%sreturn result;", t.Indent, t.Indent))
+		result = append(result, fmt.Sprintf("%s}\n", t.Indent))
 	}
 
 	if customCode != nil {
 		code := customCode[entityName]
-		result += t.Indent + "//[" + entityName + ":]\n" + code + "\n\n" + t.Indent + "//[end]\n"
+		result = append(result, t.Indent+"//["+entityName+":]\n"+code+"\n\n"+t.Indent+"//[end]")
 	}
 
-	result += "}"
+	result = append(result, "}")
 
 	t.alreadyConverted[obj.Type()] = true
 
+	return strings.Join(result, "\n"), nil
+}
+
+func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field reflector.ObjField, customCode map[string]string) ([]string, error) {
+	jsonTag, err := field.Tag("json")
+	if err != nil {
+		return nil, err
+	}
+	var result []string
+	jsonFieldName := ""
+	if len(jsonTag) > 0 {
+		jsonTagParts := strings.Split(jsonTag, ",")
+		if len(jsonTagParts) > 0 {
+			jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
+		}
+	}
+	if len(jsonFieldName) > 0 && jsonFieldName != "-" {
+		var err error
+		customTransformation, err := field.Tag(tsTransformTag)
+		if err != nil {
+			return nil, err
+		}
+		if customTransformation != "" {
+			err = builder.AddSimpleField(jsonFieldName, field)
+		} else if field.Kind() == reflect.Struct { // Struct:
+			typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type()).Elem().Interface()), customCode)
+			if err != nil {
+				return nil, err
+			}
+			result = append([]string{typeScriptChunk}, result...)
+			builder.AddStructField(jsonFieldName, field.Name())
+		} else if field.Kind() == reflect.Slice { // Slice:
+			if field.Type().Elem().Kind() == reflect.Struct { // Slice of structs:
+				typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
+				if err != nil {
+					return nil, err
+				}
+				result = append([]string{typeScriptChunk}, result...)
+				builder.AddArrayOfStructsField(jsonFieldName, field.Type().Elem().Name())
+			} else { // Slice of simple fields:
+				err = builder.AddSimpleArrayField(jsonFieldName, field.Type().Elem().Name(), field.Type().Elem().Kind())
+			}
+		} else { // Simple field:
+			err = builder.AddSimpleField(jsonFieldName, field)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	return result, nil
 }
 
