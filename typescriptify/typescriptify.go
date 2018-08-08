@@ -208,6 +208,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
+	t.alreadyConverted[typeOf] = true
 
 	entityName := fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, typeOf.Name())
 	result := fmt.Sprintf("class %s {\n", entityName)
@@ -277,8 +278,6 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 
 	result += "}"
-
-	t.alreadyConverted[typeOf] = true
 
 	return result, nil
 }

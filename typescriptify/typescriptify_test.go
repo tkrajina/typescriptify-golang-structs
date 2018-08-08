@@ -196,3 +196,28 @@ func TestDate(t *testing.T) {
 }`
 	testConverter(t, converter, desiredResult)
 }
+
+func TestRecursive(t *testing.T) {
+	type Test struct {
+		Children []Test `json:"children"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Test{}))
+	converter.CreateFromMethod = true
+	converter.BackupDir = ""
+
+	desiredResult := `export class Test {
+    children: Test[];
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Test();
+        result.children = source["children"] ? source["children"].map(function(element) { return Test.createFrom(element); }) : null;
+        return result;
+    }
+
+}`
+	testConverter(t, converter, desiredResult)
+}
