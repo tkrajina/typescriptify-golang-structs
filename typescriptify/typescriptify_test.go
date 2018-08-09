@@ -172,6 +172,27 @@ func TestTypescriptifyCustomType(t *testing.T) {
 	testConverter(t, converter, desiredResult)
 }
 
+func TestMap(t *testing.T) {
+	type TestCustomType struct {
+		Map map[string]int `json:"map"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(TestCustomType{}))
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+
+	desiredResult := `export class TestCustomType {
+        map: {[key: string]: number};
+}`
+	testConverter(t, converter, desiredResult)
+}
+
+func TestStructMap(t *testing.T) {
+	panic("TODO")
+}
+
 func TestDate(t *testing.T) {
 	type TestCustomType struct {
 		Time time.Time `json:"time" ts_type:"Date" ts_transform:"new Date(__VALUE__)"`

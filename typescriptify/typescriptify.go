@@ -264,14 +264,28 @@ func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field 
 	}
 	if customTransformation != "" {
 		err = builder.AddSimpleField(jsonFieldName, field)
-	} else if field.Kind() == reflect.Struct { // Struct:
+	} else if field.Kind() == reflect.Struct {
 		typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type()).Elem().Interface()), customCode)
 		if err != nil {
 			return nil, err
 		}
 		result = append([]string{typeScriptChunk}, result...)
 		builder.AddStructField(jsonFieldName, field.Name())
-	} else if field.Kind() == reflect.Slice { // Slice:
+	} else if field.Kind() == reflect.Map {
+		if field.Type().Key().Kind() != reflect.String {
+			return nil, errors.New(fmt.Sprintf("map key must be string, found %s", field.Type().Name()))
+		}
+		if field.Type().Elem().Kind() == reflect.Struct { // Map with structs:
+			typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
+			if err != nil {
+				return nil, err
+			}
+			result = append([]string{typeScriptChunk}, result...)
+			builder.AddMapOfStructsField(jsonFieldName, field.Type().Elem().Name())
+		} else { // Map with simple fields:
+			err = builder.AddSimpleMapField(jsonFieldName, field.Type().Elem().Name(), field.Type().Elem().Kind())
+		}
+	} else if field.Kind() == reflect.Slice {
 		if field.Type().Elem().Kind() == reflect.Struct { // Slice of structs:
 			typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
 			if err != nil {
@@ -350,4 +364,20 @@ func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
 	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
+}
+
+func (t *typeScriptClassBuilder) AddMapOfStructsField(fieldName, fieldType string) {
+	t.fields += fmt.Sprintf("%s%s: {[key: string]: %s;\n", t.indent, fieldName, fieldType)
+	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
+}
+
+func (t *typeScriptClassBuilder) AddSimpleMapField(fieldName, fieldType string, kind reflect.Kind) error {
+	// if typeScriptType, ok := t.types[kind]; ok {
+	// 	if len(fieldName) > 0 {
+	// 		t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
+	// 		t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+	// 		return nil
+	// 	}
+	// }
+	// return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
