@@ -275,6 +275,8 @@ func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field 
 		if field.Type().Key().Kind() != reflect.String {
 			return nil, errors.New(fmt.Sprintf("map key must be string, found %s", field.Type().Name()))
 		}
+		fmt.Println("type=", field.Type().String())
+		fmt.Println("kind=", field.Type().Elem().Kind().String())
 		if field.Type().Elem().Kind() == reflect.Struct { // Map with structs:
 			typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
 			if err != nil {
@@ -317,7 +319,7 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string
 	if typeScriptType, ok := t.types[kind]; ok {
 		if len(fieldName) > 0 {
 			t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source['%s'];\n", t.indent, t.indent, fieldName, fieldName)
 			return nil
 		}
 	}
@@ -344,9 +346,9 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflecto
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
 		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
 		if customTransformation == "" {
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source['%s'];\n", t.indent, t.indent, fieldName, fieldName)
 		} else {
-			val := fmt.Sprintf(`source["%s"]`, fieldName)
+			val := fmt.Sprintf(`source['%s']`, fieldName)
 			expression := strings.Replace(customTransformation, "__VALUE__", val, -1)
 			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = %s;\n", t.indent, t.indent, fieldName, expression)
 		}
@@ -358,26 +360,31 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflecto
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
 	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, fieldType)
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldType, fieldName)
+	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source['%s'] ? %s.createFrom(source['%s']) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldType, fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
 	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
+	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source['%s'] ? source['%s'].map(function(element) { return %s.createFrom(element); }) : null;\n",
+		t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
 }
 
 func (t *typeScriptClassBuilder) AddMapOfStructsField(fieldName, fieldType string) {
 	t.fields += fmt.Sprintf("%s%s: {[key: string]: %s;\n", t.indent, fieldName, fieldType)
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
+	t.createFromMethodBody += fmt.Sprintf("%s%sif (source['%s']) {\n", t.indent, t.indent, fieldName)
+	t.createFromMethodBody += fmt.Sprintf("%s%s%sresult.%s = {};\n", t.indent, t.indent, t.indent, fieldName)
+	t.createFromMethodBody += fmt.Sprintf("%s%s%sfor (const key in source['%s']) result.%s[key] = %s.createFrom(source[key]);\n",
+		t.indent, t.indent, t.indent, fieldName, fieldName, fieldType)
+	t.createFromMethodBody += fmt.Sprintf("%s%s}\n", t.indent, t.indent)
 }
 
 func (t *typeScriptClassBuilder) AddSimpleMapField(fieldName, fieldType string, kind reflect.Kind) error {
-	// if typeScriptType, ok := t.types[kind]; ok {
-	// 	if len(fieldName) > 0 {
-	// 		t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
-	// 		t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
-	// 		return nil
-	// 	}
-	// }
-	// return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
+	if typeScriptType, ok := t.types[kind]; ok {
+		if len(fieldName) > 0 {
+			t.fields += fmt.Sprintf("%s%s: {[key: string]: %s};\n", t.indent, fieldName, typeScriptType)
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source['%s'];\n", t.indent, t.indent, fieldName, fieldName)
+			return nil
+		}
+	}
+	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }

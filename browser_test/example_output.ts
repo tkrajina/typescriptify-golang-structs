@@ -9,9 +9,9 @@ export class Address {
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
         const result = new Address();
-        result.city = source["city"];
-        result.number = source["number"];
-        result.country = source["country"];
+        result.city = source['city'];
+        result.number = source['number'];
+        result.country = source['country'];
         return result;
     }
 
@@ -31,8 +31,8 @@ export class PersonalInfo {
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
         const result = new PersonalInfo();
-        result.hobby = source["hobby"];
-        result.pet_name = source["pet_name"];
+        result.hobby = source['hobby'];
+        result.pet_name = source['pet_name'];
         return result;
     }
 
@@ -53,10 +53,10 @@ export class Person {
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
         const result = new Person();
-        result.name = source["name"];
-        result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
-        result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] ? source["addresses"].map(function(element) { return Address.createFrom(element); }) : null;
+        result.name = source['name'];
+        result.personal_info = source['personal_info'] ? PersonalInfo.createFrom(source['personal_info']) : null;
+        result.nicknames = source['nicknames'];
+        result.addresses = source['addresses'] ? source['addresses'].map(function(element) { return Address.createFrom(element); }) : null;
         return result;
     }
 

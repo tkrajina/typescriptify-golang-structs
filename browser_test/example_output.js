@@ -15,9 +15,9 @@ var Address = /** @class */ (function () {
         if ('string' === typeof source)
             source = JSON.parse(source);
         var result = new Address();
-        result.city = source["city"];
-        result.number = source["number"];
-        result.country = source["country"];
+        result.city = source['city'];
+        result.number = source['number'];
+        result.country = source['country'];
         return result;
     };
     return Address;
@@ -36,8 +36,8 @@ var PersonalInfo = /** @class */ (function () {
         if ('string' === typeof source)
             source = JSON.parse(source);
         var result = new PersonalInfo();
-        result.hobby = source["hobby"];
-        result.pet_name = source["pet_name"];
+        result.hobby = source['hobby'];
+        result.pet_name = source['pet_name'];
         return result;
     };
     return PersonalInfo;
@@ -56,10 +56,10 @@ var Person = /** @class */ (function () {
         if ('string' === typeof source)
             source = JSON.parse(source);
         var result = new Person();
-        result.name = source["name"];
-        result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
-        result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] ? source["addresses"].map(function (element) { return Address.createFrom(element); }) : null;
+        result.name = source['name'];
+        result.personal_info = source['personal_info'] ? PersonalInfo.createFrom(source['personal_info']) : null;
+        result.nicknames = source['nicknames'];
+        result.addresses = source['addresses'] ? source['addresses'].map(function (element) { return Address.createFrom(element); }) : null;
         return result;
     };
     return Person;

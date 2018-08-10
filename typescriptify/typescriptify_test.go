@@ -174,23 +174,73 @@ func TestTypescriptifyCustomType(t *testing.T) {
 
 func TestMap(t *testing.T) {
 	type TestCustomType struct {
-		Map map[string]int `json:"map"`
+		Map  map[string]int    `json:"map"`
+		Map2 map[string]string `json:"map2"`
 	}
 
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(TestCustomType{}))
-	converter.CreateFromMethod = false
+	converter.CreateFromMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class TestCustomType {
         map: {[key: string]: number};
+	map2: {[key: string]: string};
+
+	static createFrom(source: any) {
+		if ('string' === typeof source) source = JSON.parse(source);
+		const result = new TestCustomType();
+		result.map = source['map'];
+		result.map2 = source['map2'];
+		return result;
+	}
+
 }`
 	testConverter(t, converter, desiredResult)
 }
 
 func TestStructMap(t *testing.T) {
-	panic("TODO")
+	type Person struct {
+		Name string `json:"name"`
+	}
+
+	type TestCustomType struct {
+		Map map[string]Person `json:"map"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(TestCustomType{}))
+	converter.CreateFromMethod = true
+	converter.BackupDir = ""
+
+	desiredResult := `export class Person {
+    name: string;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Person();
+        result.name = source['name'];
+        return result;
+    }
+
+}
+export class TestCustomType {
+    map: {[key: string]: Person;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new TestCustomType();
+        if (source['map']) {
+            result.map = {};
+	    for (const key in source['map']) result.map[key] = Person.createFrom(source[key]);
+	}
+        return result;
+    }
+
+}`
+	testConverter(t, converter, desiredResult)
 }
 
 func TestDate(t *testing.T) {
@@ -210,7 +260,7 @@ func TestDate(t *testing.T) {
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
         const result = new TestCustomType();
-        result.time = new Date(source["time"]);
+        result.time = new Date(source['time']);
         return result;
     }
 
