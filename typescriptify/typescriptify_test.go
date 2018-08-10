@@ -227,7 +227,7 @@ func TestStructMap(t *testing.T) {
 
 }
 export class TestCustomType {
-    map: {[key: string]: Person;
+    map: {[key: string]: Person};
 
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);

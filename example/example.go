@@ -15,10 +15,11 @@ type PersonalInfo struct {
 }
 
 type Person struct {
-	Name         string       `json:"name"`
-	PersonalInfo PersonalInfo `json:"personal_info"`
-	Nicknames    []string     `json:"nicknames"`
-	Addresses    []Address    `json:"addresses"`
+	Name         string            `json:"name"`
+	PersonalInfo PersonalInfo      `json:"personal_info"`
+	Nicknames    []string          `json:"nicknames"`
+	Addresses    []Address         `json:"addresses"`
+	Children     map[string]Person `json:"children"`
 }
 
 func main() {

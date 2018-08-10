@@ -60,6 +60,11 @@ var Person = /** @class */ (function () {
         result.personal_info = source['personal_info'] ? PersonalInfo.createFrom(source['personal_info']) : null;
         result.nicknames = source['nicknames'];
         result.addresses = source['addresses'] ? source['addresses'].map(function (element) { return Address.createFrom(element); }) : null;
+        if (source['children']) {
+            result.children = {};
+            for (var key in source['children'])
+                result.children[key] = Person.createFrom(source[key]);
+        }
         return result;
     };
     return Person;

@@ -369,7 +369,7 @@ func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType str
 }
 
 func (t *typeScriptClassBuilder) AddMapOfStructsField(fieldName, fieldType string) {
-	t.fields += fmt.Sprintf("%s%s: {[key: string]: %s;\n", t.indent, fieldName, fieldType)
+	t.fields += fmt.Sprintf("%s%s: {[key: string]: %s};\n", t.indent, fieldName, fieldType)
 	t.createFromMethodBody += fmt.Sprintf("%s%sif (source['%s']) {\n", t.indent, t.indent, fieldName)
 	t.createFromMethodBody += fmt.Sprintf("%s%s%sresult.%s = {};\n", t.indent, t.indent, t.indent, fieldName)
 	t.createFromMethodBody += fmt.Sprintf("%s%s%sfor (const key in source['%s']) result.%s[key] = %s.createFrom(source[key]);\n",

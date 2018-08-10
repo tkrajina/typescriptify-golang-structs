@@ -49,6 +49,7 @@ export class Person {
     personal_info: PersonalInfo;
     nicknames: string[];
     addresses: Address[];
+    children: {[key: string]: Person};
 
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -57,6 +58,10 @@ export class Person {
         result.personal_info = source['personal_info'] ? PersonalInfo.createFrom(source['personal_info']) : null;
         result.nicknames = source['nicknames'];
         result.addresses = source['addresses'] ? source['addresses'].map(function(element) { return Address.createFrom(element); }) : null;
+        if (source['children']) {
+            result.children = {};
+            for (const key in source['children']) result.children[key] = Person.createFrom(source[key]);
+        }
         return result;
     }
 
