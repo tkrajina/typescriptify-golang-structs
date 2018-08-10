@@ -188,6 +188,7 @@ func (t *TypeScriptify) convertType(obj *reflector.Obj, customCode map[string]st
 	if _, found := t.alreadyConverted[obj.Type()]; found { // Already converted
 		return "", nil
 	}
+	t.alreadyConverted[obj.Type()] = true
 
 	entityName := fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, obj.Type().Name())
 	if entityName == "" {
@@ -226,8 +227,6 @@ func (t *TypeScriptify) convertType(obj *reflector.Obj, customCode map[string]st
 	}
 
 	result = append(result, "}")
-
-	t.alreadyConverted[obj.Type()] = true
 
 	return strings.Join(result, "\n"), nil
 }
