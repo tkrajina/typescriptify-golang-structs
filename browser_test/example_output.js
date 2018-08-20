@@ -60,6 +60,7 @@ var Person = /** @class */ (function () {
         result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
         result.nicknames = source["nicknames"];
         result.addresses = source["addresses"] ? source["addresses"].map(function (element) { return Address.createFrom(element); }) : null;
+        result.address = source["address"] ? Address.createFrom(source["address"]) : null;
         return result;
     };
     return Person;
