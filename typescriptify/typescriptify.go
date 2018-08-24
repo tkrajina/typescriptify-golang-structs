@@ -328,7 +328,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 		return nil
 	}
 
-	return errors.New("Cannot find type for " + fieldType)
+	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
