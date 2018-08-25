@@ -19,6 +19,7 @@ type Person struct {
 	PersonalInfo PersonalInfo      `json:"personal_info"`
 	Nicknames    []string          `json:"nicknames"`
 	Addresses    []Address         `json:"addresses"`
+	Address      *Address          `json:"address"`
 	Children     map[string]Person `json:"children"`
 }
 

@@ -30,6 +30,7 @@ type Person struct {
 	HasName
 	Nicknames []string  `json:"nicknames"`
 	Addresses []Address `json:"addresses"`
+	Address   *Address  `json:"address"`
 	Dummy     Dummy     `json:"a"`
 }
 
@@ -50,7 +51,8 @@ export class Address {
 export class Person {
         name: string;
         nicknames: string[];
-        addresses: Address[];
+		addresses: Address[];
+		address: Address;
         a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
@@ -75,7 +77,8 @@ class Address {
 class Person {
         name: string;
         nicknames: string[];
-        addresses: Address[];
+		addresses: Address[];
+		address: Address;
         a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
@@ -98,8 +101,9 @@ export class Address {
 }
 export class Person {
         name: string;
-        nicknames: string[];
-        addresses: Address[];
+		nicknames: string[];
+		addresses: Address[];
+		address: Address;
         a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)

@@ -247,6 +247,14 @@ func (t *TypeScriptify) parseJsonFieldNameFromTag(field reflector.ObjField) (str
 }
 
 func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field reflector.ObjField, customCode map[string]string) ([]string, error) {
+
+	/*
+		TODO:
+		if field.Type.Kind() == reflect.Ptr {
+			field.Type = field.Type.Elem()
+		}
+	*/
+
 	jsonFieldName, err := t.parseJsonFieldNameFromTag(field)
 	if err != nil {
 		return nil, err
@@ -354,7 +362,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflecto
 		return nil
 	}
 
-	return errors.New("Cannot find type for " + fieldType)
+	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {

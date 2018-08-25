@@ -75,7 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	packageParts := strings.Split(packagePath, string(os.PathSeparator))
+	packageParts := strings.Split(packagePath, "/")
 	pckg := packageParts[len(packageParts)-1]
 
 	t := template.Must(template.New("").Parse(TEMPLATE))
