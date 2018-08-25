@@ -271,6 +271,13 @@ func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field 
 	}
 	if customTransformation != "" {
 		err = builder.AddSimpleField(jsonFieldName, field)
+	} else if field.Kind() == reflect.Ptr && field.Type().Elem().Kind() == reflect.Struct {
+		typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
+		if err != nil {
+			return nil, err
+		}
+		result = append([]string{typeScriptChunk}, result...)
+		builder.AddStructField(jsonFieldName, field.Name())
 	} else if field.Kind() == reflect.Struct {
 		typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type()).Elem().Interface()), customCode)
 		if err != nil {
@@ -362,7 +369,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflecto
 		return nil
 	}
 
-	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
+	return errors.New("Cannot find type for " + fieldType + ", field: " + fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
