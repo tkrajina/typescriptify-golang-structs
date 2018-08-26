@@ -247,14 +247,6 @@ func (t *TypeScriptify) parseJsonFieldNameFromTag(field reflector.ObjField) (str
 }
 
 func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field reflector.ObjField, customCode map[string]string) ([]string, error) {
-
-	/*
-		TODO:
-		if field.Type.Kind() == reflect.Ptr {
-			field.Type = field.Type.Elem()
-		}
-	*/
-
 	jsonFieldName, err := t.parseJsonFieldNameFromTag(field)
 	if err != nil {
 		return nil, err
@@ -265,6 +257,8 @@ func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field 
 		return result, nil
 	}
 
+	var typeScriptChunk string
+
 	customTransformation, err := field.Tag(tsTransformTag)
 	if err != nil {
 		return nil, err
@@ -272,42 +266,36 @@ func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field 
 	if customTransformation != "" {
 		err = builder.AddSimpleField(jsonFieldName, field)
 	} else if field.Kind() == reflect.Ptr && field.Type().Elem().Kind() == reflect.Struct {
-		typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
+		typeScriptChunk, err = t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
 		if err != nil {
 			return nil, err
 		}
-		result = append([]string{typeScriptChunk}, result...)
 		builder.AddStructField(jsonFieldName, field.Name())
 	} else if field.Kind() == reflect.Struct {
-		typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type()).Elem().Interface()), customCode)
+		typeScriptChunk, err = t.convertType(reflector.New(reflect.New(field.Type()).Elem().Interface()), customCode)
 		if err != nil {
 			return nil, err
 		}
-		result = append([]string{typeScriptChunk}, result...)
 		builder.AddStructField(jsonFieldName, field.Name())
 	} else if field.Kind() == reflect.Map {
 		if field.Type().Key().Kind() != reflect.String {
 			return nil, errors.New(fmt.Sprintf("map key must be string, found %s", field.Type().Name()))
 		}
-		fmt.Println("type=", field.Type().String())
-		fmt.Println("kind=", field.Type().Elem().Kind().String())
 		if field.Type().Elem().Kind() == reflect.Struct { // Map with structs:
-			typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
+			typeScriptChunk, err = t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
 			if err != nil {
 				return nil, err
 			}
-			result = append([]string{typeScriptChunk}, result...)
 			builder.AddMapOfStructsField(jsonFieldName, field.Type().Elem().Name())
 		} else { // Map with simple fields:
 			err = builder.AddSimpleMapField(jsonFieldName, field.Type().Elem().Name(), field.Type().Elem().Kind())
 		}
 	} else if field.Kind() == reflect.Slice {
 		if field.Type().Elem().Kind() == reflect.Struct { // Slice of structs:
-			typeScriptChunk, err := t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
+			typeScriptChunk, err = t.convertType(reflector.New(reflect.New(field.Type().Elem()).Elem().Interface()), customCode)
 			if err != nil {
 				return nil, err
 			}
-			result = append([]string{typeScriptChunk}, result...)
 			builder.AddArrayOfStructsField(jsonFieldName, field.Type().Elem().Name())
 		} else { // Slice of simple fields:
 			err = builder.AddSimpleArrayField(jsonFieldName, field.Type().Elem().Name(), field.Type().Elem().Kind())
@@ -317,6 +305,10 @@ func (t *TypeScriptify) convertTypeField(builder *typeScriptClassBuilder, field 
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if typeScriptChunk != "" {
+		result = append([]string{typeScriptChunk}, result...)
 	}
 
 	return result, nil
