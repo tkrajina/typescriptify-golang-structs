@@ -17,6 +17,9 @@ export class Address {
 
     //[Address:]
 
+    getAddressString = () => {
+        return this.city + " " + this.number;
+    }
 
     //[end]
 }
@@ -34,6 +37,9 @@ export class PersonalInfo {
 
     //[PersonalInfo:]
 
+    getPersonalInfoString = () => {
+        return "pet:" + this.pet_name;
+    }
 
     //[end]
 }
@@ -62,6 +68,9 @@ export class Person {
 
     //[Person:]
 
+    getInfo = () => {
+        return "name:" + this.name;
+    }
 
     //[end]
 }

@@ -3,6 +3,12 @@
 exports.__esModule = true;
 var Address = /** @class */ (function () {
     function Address() {
+        var _this = this;
+        //[Address:]
+        this.getAddressString = function () {
+            return _this.city + " " + _this.number;
+        };
+        //[end]
     }
     Address.createFrom = function (source) {
         if ('string' === typeof source)
@@ -18,6 +24,12 @@ var Address = /** @class */ (function () {
 exports.Address = Address;
 var PersonalInfo = /** @class */ (function () {
     function PersonalInfo() {
+        var _this = this;
+        //[PersonalInfo:]
+        this.getPersonalInfoString = function () {
+            return "pet:" + _this.pet_name;
+        };
+        //[end]
     }
     PersonalInfo.createFrom = function (source) {
         if ('string' === typeof source)
@@ -32,6 +44,12 @@ var PersonalInfo = /** @class */ (function () {
 exports.PersonalInfo = PersonalInfo;
 var Person = /** @class */ (function () {
     function Person() {
+        var _this = this;
+        //[Person:]
+        this.getInfo = function () {
+            return "name:" + _this.name;
+        };
+        //[end]
     }
     Person.createFrom = function (source) {
         if ('string' === typeof source)

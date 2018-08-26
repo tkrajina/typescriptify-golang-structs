@@ -31,7 +31,7 @@ func main() {
 
 	converter.Add(Person{})
 
-	err := converter.ConvertToFile("browser_test/example_output.ts")
+	err := converter.ConvertToFile("ts_tests/example_output.ts")
 	if err != nil {
 		panic(err.Error())
 	}

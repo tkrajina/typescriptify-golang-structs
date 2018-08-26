@@ -4,5 +4,6 @@ install:
 	go install ./...
 test:
 	go test ./...
-	go run example/example.go
-	tsc browser_test/example_output.ts
+	go run ts_tests/*go
+	tsc ts_tests/*ts
+	node ts_tests/tests.js
