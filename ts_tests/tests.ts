@@ -1,7 +1,7 @@
 import { Person } from "./example_output";
 
 class Tests {
-    test1() {
+    testMisc() {
         const person = Person.createFrom({
             "name": "Ovo Ono",
             "nicknames": ["aaa", "bbb"],
@@ -32,30 +32,37 @@ class Tests {
         console.log("OK");
     }
 
-    test2() {
-        Person.createFrom({
-            "name": "Ovo Ono",
-            "nicknames": ["aaa", "bbb"],
-            "personal_info": {
-                "hobby": ["1", "2"],
-                "pet_name": "nera"
+    testMaps() {
+        const person = Person.createFrom({
+            "children": {
+                "eve": {
+                    "name": "Eve",
+                    "nicknames": ["the one"]
+                },
+                "adam": {
+                    "name": "Adam",
+                }
+            },
+            "children_age": {
+                "eve": 19,
+                "adam": 20
             }
         });
-        console.log("OK");
-    }
-
-    test3() {
-        const person = Person.createFrom({
-            "name": "Ovo Ono",
-            "nicknames": ["aaa", "bbb"],
-            "personal_info": {}
-        });
-        console.log("OK");
-    }
-
-    test4() {
-        const person = Person.createFrom({
-        });
+        if (!person.children["adam"]) {
+            throw new Error("No Adam");
+        }
+        if (!person.children["eve"]) {
+            throw new Error("No Eve");
+        }
+        if (person.children["eve"].nicknames[0] != "the one") {
+            throw new Error("No Eve");
+        }
+        if (person.children_age["adam"] != 20) {
+            throw new Error("No Adam");
+        }
+        if (person.children_age["eve"] != 19) {
+            throw new Error("No Eve");
+        }
         console.log("OK");
     }
 }

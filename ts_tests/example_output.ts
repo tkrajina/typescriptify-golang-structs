@@ -50,6 +50,7 @@ export class Person {
     addresses: Address[];
     address: Address;
     children: {[key: string]: Person};
+    children_age: {[key: string]: number};
 
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -63,6 +64,7 @@ export class Person {
             result.children = {};
             for (const key in source['children']) result.children[key] = Person.createFrom(source[key]);
         }
+        result.children_age = source['children_age'];
         return result;
     }
 

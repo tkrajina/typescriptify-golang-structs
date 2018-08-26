@@ -65,6 +65,7 @@ var Person = /** @class */ (function () {
             for (var key in source['children'])
                 result.children[key] = Person.createFrom(source[key]);
         }
+        result.children_age = source['children_age'];
         return result;
     };
     return Person;

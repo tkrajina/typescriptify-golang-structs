@@ -21,6 +21,7 @@ type Person struct {
 	Addresses    []Address         `json:"addresses"`
 	Address      *Address          `json:"address"`
 	Children     map[string]Person `json:"children"`
+	ChildrenAge  map[string]int    `json:"children_age"`
 }
 
 func main() {

@@ -4,7 +4,7 @@ var example_output_1 = require("./example_output");
 var Tests = /** @class */ (function () {
     function Tests() {
     }
-    Tests.prototype.test1 = function () {
+    Tests.prototype.testMisc = function () {
         var person = example_output_1.Person.createFrom({
             "name": "Ovo Ono",
             "nicknames": ["aaa", "bbb"],
@@ -34,27 +34,37 @@ var Tests = /** @class */ (function () {
         }
         console.log("OK");
     };
-    Tests.prototype.test2 = function () {
-        example_output_1.Person.createFrom({
-            "name": "Ovo Ono",
-            "nicknames": ["aaa", "bbb"],
-            "personal_info": {
-                "hobby": ["1", "2"],
-                "pet_name": "nera"
+    Tests.prototype.testMaps = function () {
+        var person = example_output_1.Person.createFrom({
+            "children": {
+                "eve": {
+                    "name": "Eve",
+                    "nicknames": ["the one"]
+                },
+                "adam": {
+                    "name": "Adam"
+                }
+            },
+            "children_age": {
+                "eve": 19,
+                "adam": 20
             }
         });
-        console.log("OK");
-    };
-    Tests.prototype.test3 = function () {
-        var person = example_output_1.Person.createFrom({
-            "name": "Ovo Ono",
-            "nicknames": ["aaa", "bbb"],
-            "personal_info": {}
-        });
-        console.log("OK");
-    };
-    Tests.prototype.test4 = function () {
-        var person = example_output_1.Person.createFrom({});
+        if (!person.children["adam"]) {
+            throw new Error("No Adam");
+        }
+        if (!person.children["eve"]) {
+            throw new Error("No Eve");
+        }
+        if (person.children["eve"].nicknames[0] != "the one") {
+            throw new Error("No Eve");
+        }
+        if (person.children_age["adam"] != 20) {
+            throw new Error("No Adam");
+        }
+        if (person.children_age["eve"] != 19) {
+            throw new Error("No Eve");
+        }
         console.log("OK");
     };
     return Tests;
