@@ -222,6 +222,9 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 
 	fields := deepFields(typeOf)
 	for _, field := range fields {
+		if field.Type.Kind() == reflect.Ptr {
+			field.Type = field.Type.Elem()
+		}
 		jsonTag := field.Tag.Get("json")
 		jsonFieldName := ""
 		if len(jsonTag) > 0 {
@@ -240,7 +243,9 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				if err != nil {
 					return "", err
 				}
-				result = typeScriptChunk + "\n" + result
+				if typeScriptChunk != "" {
+					result = typeScriptChunk + "\n" + result
+				}
 				builder.AddStructField(jsonFieldName, field.Type.Name())
 			} else if field.Type.Kind() == reflect.Slice { // Slice:
 				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
@@ -323,7 +328,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 		return nil
 	}
 
-	return errors.New("Cannot find type for " + fieldType)
+	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
