@@ -39,6 +39,7 @@ func New() *TypeScriptify {
 	types := make(map[reflect.Kind]string)
 
 	types[reflect.Bool] = "boolean"
+	types[reflect.Interface] = "any"
 
 	types[reflect.Int] = "number"
 	types[reflect.Int8] = "number"
