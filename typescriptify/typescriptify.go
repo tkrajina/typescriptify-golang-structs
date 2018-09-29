@@ -303,7 +303,7 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string
 			return nil
 		}
 	}
-	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
+	return errors.New(fmt.Sprintf("cannot find type for: %s, field: %s, field type: %s", kind.String(), fieldName, fieldType))
 }
 
 func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {

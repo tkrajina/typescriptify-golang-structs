@@ -34,14 +34,27 @@ type Person struct {
 	Dummy     Dummy     `json:"a"`
 }
 
+type PersonWithPtrArray struct {
+	HasName
+	Nicknames []string   `json:"nicknames"`
+	Addresses []*Address `json:"addresses"`
+	Address   *Address   `json:"address"`
+	Dummy     Dummy      `json:"a"`
+}
+
 func TestTypescriptifyWithTypes(t *testing.T) {
-	converter := New()
+	types := []reflect.Type{
+		reflect.TypeOf(Person{}),
+		reflect.TypeOf(PersonWithPtrArray{}),
+	}
+	for _, typ := range types {
+		converter := New()
 
-	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
-	converter.BackupDir = ""
+		converter.AddType(typ)
+		converter.CreateFromMethod = false
+		converter.BackupDir = ""
 
-	desiredResult := `export class Dummy {
+		desiredResult := `export class Dummy {
         something: string;
 }
 export class Address {
@@ -55,7 +68,8 @@ export class Person {
 		address: Address;
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult)
+		testConverter(t, converter, desiredResult)
+	}
 }
 
 func TestTypescriptifyWithInstances(t *testing.T) {
