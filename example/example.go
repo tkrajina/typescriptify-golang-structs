@@ -20,6 +20,8 @@ type Person struct {
 	Nicknames    []string     `json:"nicknames"`
 	Addresses    []Address    `json:"addresses"`
 	Address      *Address     `json:"address"`
+	Metadata     []byte       `json:"metadata" ts_type:"{[key:string]:string}"`
+	Friends      []*Person    `json:"friends"`
 }
 
 func main() {

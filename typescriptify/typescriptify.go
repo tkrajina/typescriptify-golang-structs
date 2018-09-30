@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"reflect"
@@ -247,17 +248,22 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				if typeScriptChunk != "" {
 					result = typeScriptChunk + "\n" + result
 				}
-				builder.AddStructField(jsonFieldName, field.Type.Name())
+				builder.AddStructField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Slice { // Slice:
+				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
+					field.Type = field.Type.Elem()
+				}
 				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
 					typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
 					if err != nil {
 						return "", err
 					}
-					result = typeScriptChunk + "\n" + result
-					builder.AddArrayOfStructsField(jsonFieldName, field.Type.Elem().Name())
+					if typeScriptChunk != "" {
+						result = typeScriptChunk + "\n" + result
+					}
+					builder.AddArrayOfStructsField(jsonFieldName, field)
 				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field.Type.Elem().Name(), field.Type.Elem().Kind())
+					err = builder.AddSimpleArrayField(jsonFieldName, field)
 				}
 			} else { // Simple field:
 				err = builder.AddSimpleField(jsonFieldName, field)
@@ -295,18 +301,26 @@ type typeScriptClassBuilder struct {
 	createFromMethodBody string
 }
 
-func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName, fieldType string, kind reflect.Kind) error {
-	if typeScriptType, ok := t.types[kind]; ok {
-		if len(fieldName) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
-			return nil
-		}
+func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField) error {
+	fieldType, kind := field.Type.Elem().Name(), field.Type.Elem().Kind()
+
+	customTSType := field.Tag.Get(tsType)
+
+	typeScriptType := t.types[kind] + "[]"
+	if len(customTSType) > 0 {
+		typeScriptType = customTSType
+	}
+	if len(typeScriptType) > 0 && len(fieldName) > 0 {
+		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
+		t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+		return nil
+
 	}
 	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
 func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {
+	log.Println("addSimpleField", fieldName)
 	fieldType, kind := field.Type.Name(), field.Type.Kind()
 	customTSType := field.Tag.Get(tsType)
 
@@ -332,12 +346,16 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
 }
 
-func (t *typeScriptClassBuilder) AddStructField(fieldName, fieldType string) {
+func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
+	log.Println("addStructField", fieldName)
+	fieldType := field.Type.Name()
 	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, fieldType)
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldType, fieldName)
 }
 
-func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName, fieldType string) {
+func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField) {
+	log.Println("addArrayOfStructsField", fieldName)
+	fieldType := field.Type.Elem().Name()
 	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
 }

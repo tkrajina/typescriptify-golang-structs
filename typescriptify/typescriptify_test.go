@@ -31,6 +31,8 @@ type Person struct {
 	Nicknames []string  `json:"nicknames"`
 	Addresses []Address `json:"addresses"`
 	Address   *Address  `json:"address"`
+	Metadata  []byte    `json:"metadata" ts_type:"{[key:string]:string}"`
+	Friends   []*Person `json:"friends"`
 	Dummy     Dummy     `json:"a"`
 }
 
@@ -53,6 +55,8 @@ export class Person {
         nicknames: string[];
 		addresses: Address[];
 		address: Address;
+		metadata: {[key:string]:string};
+		friends: Person[];
         a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
@@ -79,6 +83,8 @@ class Person {
         nicknames: string[];
 		addresses: Address[];
 		address: Address;
+		metadata: {[key:string]:string};
+		friends: Person[];
         a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
@@ -104,6 +110,8 @@ export class Person {
 		nicknames: string[];
 		addresses: Address[];
 		address: Address;
+		metadata: {[key:string]:string};
+		friends: Person[];
         a: Dummy;
 }`
 	testConverter(t, converter, desiredResult)
