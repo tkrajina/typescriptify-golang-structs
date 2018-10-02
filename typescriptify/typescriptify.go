@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"reflect"
@@ -320,7 +319,6 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 }
 
 func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {
-	log.Println("addSimpleField", fieldName)
 	fieldType, kind := field.Type.Name(), field.Type.Kind()
 	customTSType := field.Tag.Get(tsType)
 
@@ -347,14 +345,12 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
-	log.Println("addStructField", fieldName)
 	fieldType := field.Type.Name()
 	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, fieldType)
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldType, fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField) {
-	log.Println("addArrayOfStructsField", fieldName)
 	fieldType := field.Type.Elem().Name()
 	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
