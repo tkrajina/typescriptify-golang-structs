@@ -50,6 +50,8 @@ export class Person {
     nicknames: string[];
     addresses: Address[];
     address: Address;
+    metadata: {[key:string]:string};
+    friends: Person[];
 
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -59,6 +61,8 @@ export class Person {
         result.nicknames = source["nicknames"];
         result.addresses = source["addresses"] ? source["addresses"].map(function(element) { return Address.createFrom(element); }) : null;
         result.address = source["address"] ? Address.createFrom(source["address"]) : null;
+        result.metadata = source["metadata"];
+        result.friends = source["friends"] ? source["friends"].map(function(element) { return Person.createFrom(element); }) : null;
         return result;
     }
 

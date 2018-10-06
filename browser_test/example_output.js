@@ -61,6 +61,8 @@ var Person = /** @class */ (function () {
         result.nicknames = source["nicknames"];
         result.addresses = source["addresses"] ? source["addresses"].map(function (element) { return Address.createFrom(element); }) : null;
         result.address = source["address"] ? Address.createFrom(source["address"]) : null;
+        result.metadata = source["metadata"];
+        result.friends = source["friends"] ? source["friends"].map(function (element) { return Person.createFrom(element); }) : null;
         return result;
     };
     return Person;
