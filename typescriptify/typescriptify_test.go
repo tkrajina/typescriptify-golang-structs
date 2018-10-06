@@ -296,3 +296,28 @@ func TestRecursive(t *testing.T) {
 }`
 	testConverter(t, converter, desiredResult)
 }
+
+func TestAny(t *testing.T) {
+	type Test struct {
+		Any interface{} `json:"field"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Test{}))
+	converter.CreateFromMethod = true
+	converter.BackupDir = ""
+
+	desiredResult := `export class Test {
+    field: any;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Test();
+        result.field = source["field"];
+        return result;
+    }
+
+}`
+	testConverter(t, converter, desiredResult)
+}

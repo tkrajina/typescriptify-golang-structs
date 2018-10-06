@@ -18,6 +18,7 @@ const (
 	tsType         = "ts_type"
 
 	tsString  = "string"
+	tsAny     = "any"
 	tsBoolean = "boolean"
 	tsNumber  = "number"
 )
@@ -45,6 +46,7 @@ func New() *TypeScriptify {
 	types := make(map[reflect.Kind]string)
 
 	types[reflect.Bool] = tsBoolean
+	types[reflect.Interface] = tsAny
 
 	types[reflect.Int] = tsNumber
 	types[reflect.Int8] = tsNumber
