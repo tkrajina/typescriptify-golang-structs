@@ -305,13 +305,14 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 	typeScriptType := t.types[kind]
 
 	if len(fieldName) > 0 {
-		if len(typeScriptType) > 0 {
+		if customTSType := field.Tag.Get(tsType); len(customTSType) > 0 {
+			t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, customTSType)
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+			return nil
+		} else if len(typeScriptType) > 0 {
 			t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
 			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
 			return nil
-		} else if customTSType := field.Tag.Get(tsType); len(customTSType) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, customTSType)
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
 		}
 	}
 
