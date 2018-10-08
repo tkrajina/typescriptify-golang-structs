@@ -302,19 +302,19 @@ type typeScriptClassBuilder struct {
 
 func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField) error {
 	fieldType, kind := field.Type.Elem().Name(), field.Type.Elem().Kind()
+	typeScriptType := t.types[kind]
 
-	customTSType := field.Tag.Get(tsType)
-
-	typeScriptType := t.types[kind] + "[]"
-	if len(customTSType) > 0 {
-		typeScriptType = customTSType
+	if len(fieldName) > 0 {
+		if len(typeScriptType) > 0 {
+			t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+			return nil
+		} else if customTSType := field.Tag.Get(tsType); len(customTSType) > 0 {
+			t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, customTSType)
+			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
+		}
 	}
-	if len(typeScriptType) > 0 && len(fieldName) > 0 {
-		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
-		t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
-		return nil
 
-	}
 	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
