@@ -354,5 +354,5 @@ func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Elem().Name()
 	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
+	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
 }

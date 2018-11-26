@@ -226,7 +226,7 @@ func TestRecursive(t *testing.T) {
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
         const result = new Test();
-        result.children = source["children"] ? source["children"].map(function(element) { return Test.createFrom(element); }) : null;
+        result.children = source["children"] ? source["children"].map(function(element: any) { return Test.createFrom(element); }) : null;
         return result;
     }
 
