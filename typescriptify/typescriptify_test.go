@@ -234,6 +234,45 @@ func TestRecursive(t *testing.T) {
 	testConverter(t, converter, desiredResult)
 }
 
+func TestArrayOfArrays(t *testing.T) {
+	type Key struct {
+		Key string `json:"key"`
+	}
+	type Keyboard struct {
+		Keys [][]Key `json:"keys"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Keyboard{}))
+	converter.CreateFromMethod = true
+	converter.BackupDir = ""
+
+	desiredResult := `export class Key {
+    key: string;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Key();
+        result.key = source["key"];
+        return result;
+    }
+
+}
+export class Keyboard {
+    keys: Key[][];
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Keyboard();
+        result.keys = source["keys"] ? source["keys"].map(function(element: any) { return Key.createFrom(element); }) : null;
+        return result;
+    }
+
+}`
+	testConverter(t, converter, desiredResult)
+}
+
 func TestAny(t *testing.T) {
 	type Test struct {
 		Any interface{} `json:"field"`

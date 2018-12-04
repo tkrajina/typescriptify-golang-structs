@@ -252,6 +252,13 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
 					field.Type = field.Type.Elem()
 				}
+
+				arrayDepth := 1
+				for field.Type.Elem().Kind() == reflect.Slice { // Slice of slices:
+					field.Type = field.Type.Elem()
+					arrayDepth++
+				}
+
 				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
 					typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
 					if err != nil {
@@ -260,9 +267,9 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					if typeScriptChunk != "" {
 						result = typeScriptChunk + "\n" + result
 					}
-					builder.AddArrayOfStructsField(jsonFieldName, field)
+					builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
 				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field)
+					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
 				}
 			} else { // Simple field:
 				err = builder.AddSimpleField(jsonFieldName, field)
@@ -300,17 +307,18 @@ type typeScriptClassBuilder struct {
 	createFromMethodBody string
 }
 
-func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField) error {
+func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField, arrayDepth int) error {
 	fieldType, kind := field.Type.Elem().Name(), field.Type.Elem().Kind()
 	typeScriptType := t.types[kind]
 
 	if len(fieldName) > 0 {
-		if customTSType := field.Tag.Get(tsType); len(customTSType) > 0 {
+		customTSType := field.Tag.Get(tsType)
+		if len(customTSType) > 0 {
 			t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, customTSType)
 			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
 			return nil
 		} else if len(typeScriptType) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, typeScriptType)
+			t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, typeScriptType, strings.Repeat("[]", arrayDepth))
 			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, fieldName, fieldName)
 			return nil
 		}
@@ -351,8 +359,8 @@ func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldType, fieldName)
 }
 
-func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField) {
+func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
-	t.fields += fmt.Sprintf("%s%s: %s[];\n", t.indent, fieldName, fieldType)
+	t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, fieldType, strings.Repeat("[]", arrayDepth))
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
 }
