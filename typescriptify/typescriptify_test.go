@@ -297,3 +297,26 @@ func TestAny(t *testing.T) {
 }`
 	testConverter(t, converter, desiredResult)
 }
+
+type NumberTime time.Time
+
+func (t NumberTime) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%d", time.Time(t).Unix())), nil
+}
+
+func TestTypeAlias(t *testing.T) {
+	type Person struct {
+		Birth NumberTime `json:"birth" ts_type:"number"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Person{}))
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+
+	desiredResult := `export class Person {
+    birth: number;
+}`
+	testConverter(t, converter, desiredResult)
+}

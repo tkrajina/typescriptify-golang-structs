@@ -237,7 +237,10 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
 			customTransformation := field.Tag.Get(tsTransformTag)
+			customTSType := field.Tag.Get(tsType)
 			if customTransformation != "" {
+				err = builder.AddSimpleField(jsonFieldName, field)
+			} else if customTSType != "" { // Struct:
 				err = builder.AddSimpleField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Struct { // Struct:
 				typeScriptChunk, err := t.convertType(field.Type, customCode)
