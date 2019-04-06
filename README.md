@@ -1,5 +1,17 @@
 # A Golang JSON to TypeScript model converter
 
+## Installation
+
+The command-line tool:
+
+    go get github.com/tkrajina/typescriptify-golang-structs/tscriptify
+
+The library:
+
+    go get github.com/tkrajina/typescriptify-golang-structs
+
+## Usage
+
 Use the commantline tool:
 
     tscriptify -package=package/with/your/models -target=target_ts_file.ts Model1 Model2
