@@ -12,7 +12,7 @@ The library:
 
 ## Usage
 
-Use the commantline tool:
+Use the command line tool:
 
     tscriptify -package=package/with/your/models -target=target_ts_file.ts Model1 Model2
 
