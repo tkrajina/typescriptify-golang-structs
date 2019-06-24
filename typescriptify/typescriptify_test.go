@@ -1,6 +1,7 @@
 package typescriptify
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -319,4 +320,36 @@ func TestTypeAlias(t *testing.T) {
     birth: number;
 }`
 	testConverter(t, converter, desiredResult)
+}
+
+type MSTime struct {
+	time.Time
+}
+
+func (MSTime) UnmarshalJSON([]byte) error   { return nil }
+func (MSTime) MarshalJSON() ([]byte, error) { return []byte("1111"), nil }
+
+func TestOverrideCustomType(t *testing.T) {
+
+	type SomeStruct struct {
+		Time MSTime `json:"time" ts_type:"number"`
+	}
+	var _ json.Marshaler = new(MSTime)
+	var _ json.Unmarshaler = new(MSTime)
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(SomeStruct{}))
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+
+	desiredResult := `export class SomeStruct {
+    time: number;
+}`
+	testConverter(t, converter, desiredResult)
+
+	byts, _ := json.Marshal(SomeStruct{Time: MSTime{Time: time.Now()}})
+	if string(byts) != `{"time":1111}` {
+		t.Error("marhshalling failed")
+	}
 }
