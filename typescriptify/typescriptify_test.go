@@ -154,24 +154,31 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string)
 		panic(err.Error())
 	}
 
+	desiredResult = strings.TrimSpace(desiredResult)
 	typeScriptCode = strings.Trim(typeScriptCode, " \t\n\r")
 	if typeScriptCode != desiredResult {
-		lines1 := strings.Split(typeScriptCode, "\n")
-		lines2 := strings.Split(desiredResult, "\n")
+		gotLines1 := strings.Split(typeScriptCode, "\n")
+		expectedLines2 := strings.Split(desiredResult, "\n")
 
-		if len(lines1) != len(lines2) {
-			os.Stderr.WriteString(fmt.Sprintf("Lines: %d != %d\n", len(lines1), len(lines2)))
-			os.Stderr.WriteString(fmt.Sprintf("Expected:\n%s\n\nGot:\n%s\n", desiredResult, typeScriptCode))
-			t.Fail()
-		} else {
-			for i := 0; i < len(lines1); i++ {
-				line1 := strings.Trim(lines1[i], " \t\r\n")
-				line2 := strings.Trim(lines2[i], " \t\r\n")
-				if line1 != line2 {
-					os.Stderr.WriteString(fmt.Sprintf("%d. line don't match: `%s` != `%s`\n", i+1, line1, line2))
-					os.Stderr.WriteString(fmt.Sprintf("Expected:\n%s\n\nGot:\n%s\n", desiredResult, typeScriptCode))
-					t.Fail()
-				}
+		max := len(gotLines1)
+		if len(expectedLines2) > max {
+			max = len(expectedLines2)
+		}
+
+		for i := 0; i < max; i++ {
+			var gotLine, expectedLine string
+			if i < len(gotLines1) {
+				gotLine = gotLines1[i]
+			}
+			if i < len(expectedLines2) {
+				expectedLine = expectedLines2[i]
+			}
+			if strings.TrimSpace(gotLine) == strings.TrimSpace(expectedLine) {
+				fmt.Printf("OK:       %s\n", gotLine)
+			} else {
+				fmt.Printf("GOT:      %s\n", gotLine)
+				fmt.Printf("EXPECTED: %s\n", expectedLine)
+				t.Fail()
 			}
 		}
 	}
