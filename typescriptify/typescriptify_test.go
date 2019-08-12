@@ -3,7 +3,6 @@ package typescriptify
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -128,13 +127,31 @@ func TestWithPrefixes(t *testing.T) {
 	converter.CreateFromMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
+	converter.CreateFromMethod = true
 
 	desiredResult := `class test_Dummy_test {
     something: string;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new test_Dummy_test();
+        result.something = source["something"];
+        return result;
+    }
+
 }
 class test_Address_test {
     duration: number;
     text: string;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new test_Address_test();
+        result.duration = source["duration"];
+        result.text = source["text"];
+        return result;
+    }
+
 }
 class test_Person_test {
     name: string;
@@ -144,6 +161,20 @@ class test_Person_test {
     metadata: {[key:string]:string};
     friends: test_Person_test[];
     a: test_Dummy_test;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new test_Person_test();
+        result.name = source["name"];
+        result.nicknames = source["nicknames"];
+        result.addresses = source["addresses"] ? source["addresses"].map(function(element: any) { return test_Address_test.createFrom(element); }) : null;
+        result.address = source["address"] ? test_Address_test.createFrom(source["address"]) : null;
+        result.metadata = source["metadata"];
+        result.friends = source["friends"] ? source["friends"].map(function(element: any) { return test_Person_test.createFrom(element); }) : null;
+        result.a = source["a"] ? test_Dummy_test.createFrom(source["a"]) : null;
+        return result;
+    }
+
 }`
 	testConverter(t, converter, desiredResult)
 }
