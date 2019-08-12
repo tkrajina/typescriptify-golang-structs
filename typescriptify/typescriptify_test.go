@@ -122,19 +122,28 @@ func TestWithPrefixes(t *testing.T) {
 	converter := New()
 
 	converter.Prefix = "test_"
+	converter.Suffix = "_test"
 
-	converter.Add(Address{})
-	converter.Add(Dummy{})
+	converter.Add(Person{})
 	converter.CreateFromMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
 
-	desiredResult := `class test_Address {
-        duration: number;
-        text: string;
+	desiredResult := `class test_Dummy_test {
+    something: string;
 }
-class test_Dummy {
-        something: string;
+class test_Address_test {
+    duration: number;
+    text: string;
+}
+class test_Person_test {
+    name: string;
+    nicknames: string[];
+    addresses: test_Address_test[];
+    address: test_Address_test;
+    metadata: {[key:string]:string};
+    friends: test_Person_test[];
+    a: test_Dummy_test;
 }`
 	testConverter(t, converter, desiredResult)
 }

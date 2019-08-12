@@ -211,7 +211,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 	t.alreadyConverted[typeOf] = true
 
-	entityName := fmt.Sprintf("%s%s%s", t.Prefix, t.Suffix, typeOf.Name())
+	entityName := t.Prefix + typeOf.Name() + t.Suffix
 	result := fmt.Sprintf("class %s {\n", entityName)
 	if !t.DontExport {
 		result = "export " + result
@@ -219,6 +219,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	builder := typeScriptClassBuilder{
 		types:  t.types,
 		indent: t.Indent,
+		prefix: t.Prefix,
+		suffix: t.Suffix,
 	}
 
 	fields := deepFields(typeOf)
@@ -308,6 +310,7 @@ type typeScriptClassBuilder struct {
 	indent               string
 	fields               string
 	createFromMethodBody string
+	prefix, suffix       string
 }
 
 func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField, arrayDepth int) error {
@@ -358,12 +361,12 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Name()
-	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, fieldType)
+	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldType, fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
-	t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, fieldType, strings.Repeat("[]", arrayDepth))
+	t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth))
 	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, fieldName, fieldName, fieldName, fieldType)
 }
