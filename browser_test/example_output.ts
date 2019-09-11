@@ -4,7 +4,7 @@
 export class Address {
     city: string;
     number: number;
-    country: string;
+    country?: string;
 
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);

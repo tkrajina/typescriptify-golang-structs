@@ -48,7 +48,7 @@ func TestTypescriptifyWithTypes(t *testing.T) {
 }
 export class Address {
         duration: number;
-        text: string;
+        text?: string;
 }
 export class Person {
         name: string;
@@ -76,7 +76,7 @@ func TestTypescriptifyWithInstances(t *testing.T) {
 }
 class Address {
         duration: number;
-        text: string;
+        text?: string;
 }
 class Person {
         name: string;
@@ -103,7 +103,7 @@ func TestTypescriptifyWithDoubleClasses(t *testing.T) {
 }
 export class Address {
         duration: number;
-        text: string;
+        text?: string;
 }
 export class Person {
         name: string;
@@ -142,7 +142,7 @@ func TestWithPrefixes(t *testing.T) {
 }
 class test_Address_test {
     duration: number;
-    text: string;
+    text?: string;
 
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
