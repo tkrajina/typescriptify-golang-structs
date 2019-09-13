@@ -4,7 +4,7 @@
 export interface Address {
     city: string;
     number: number;
-    country: string;
+    country?: string;
     //[Address:]
     /* Custom code here */
 
