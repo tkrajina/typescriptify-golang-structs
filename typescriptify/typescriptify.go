@@ -23,6 +23,7 @@ type TypeScriptify struct {
 	CreateFromMethod bool
 	BackupDir        string // If empty no backup
 	DontExport       bool
+	CreateInterface  bool
 
 	golangTypes []reflect.Type
 	types       map[reflect.Kind]string
@@ -212,7 +213,12 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	t.alreadyConverted[typeOf] = true
 
 	entityName := t.Prefix + typeOf.Name() + t.Suffix
-	result := fmt.Sprintf("class %s {\n", entityName)
+	result := ""
+	if t.CreateInterface {
+		result += fmt.Sprintf("interface %s {\n", entityName)
+	} else {
+		result += fmt.Sprintf("class %s {\n", entityName)
+	}
 	if !t.DontExport {
 		result = "export " + result
 	}
@@ -294,7 +300,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 
 	result += builder.fields
-	if t.CreateFromMethod {
+	if !t.CreateInterface && t.CreateFromMethod {
 		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
 		result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
 		result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
@@ -305,7 +311,9 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 
 	if customCode != nil {
 		code := customCode[entityName]
-		result += t.Indent + "//[" + entityName + ":]\n" + code + "\n\n" + t.Indent + "//[end]\n"
+		if len(code) != 0 {
+			result += t.Indent + "//[" + entityName + ":]\n" + code + "\n\n" + t.Indent + "//[end]\n"
+		}
 	}
 
 	result += "}"

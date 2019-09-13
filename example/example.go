@@ -36,4 +36,10 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+
+	converter.CreateInterface = true
+	err = converter.ConvertToFile("browser_test/example_output_interfaces.ts")
+	if err != nil {
+		panic(err.Error())
+	}
 }

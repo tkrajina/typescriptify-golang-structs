@@ -90,6 +90,35 @@ class Person {
 	testConverter(t, converter, desiredResult)
 }
 
+func TestTypescriptifyWithInterfaces(t *testing.T) {
+	converter := New()
+
+	converter.Add(Person{})
+	converter.Add(Dummy{})
+	converter.CreateFromMethod = false
+	converter.DontExport = true
+	converter.BackupDir = ""
+	converter.CreateInterface = true
+
+	desiredResult := `interface Dummy {
+        something: string;
+}
+interface Address {
+        duration: number;
+        text?: string;
+}
+interface Person {
+        name: string;
+        nicknames: string[];
+		addresses: Address[];
+		address: Address;
+		metadata: {[key:string]:string};
+		friends: Person[];
+        a: Dummy;
+}`
+	testConverter(t, converter, desiredResult)
+}
+
 func TestTypescriptifyWithDoubleClasses(t *testing.T) {
 	converter := New()
 
