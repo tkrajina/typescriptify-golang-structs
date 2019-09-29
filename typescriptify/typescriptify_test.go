@@ -429,3 +429,76 @@ func TestOverrideCustomType(t *testing.T) {
 		t.Error("marhshalling failed")
 	}
 }
+
+type Weekday int
+
+const (
+	Sunday Weekday = iota
+	Monday
+	Tuesday
+	Wednesday
+	Thursday
+	Friday
+	Saturday
+)
+
+func (w Weekday) TSName() string {
+	switch w {
+	case Sunday:
+		return "SUNDAY"
+	case Monday:
+		return "MONDAY"
+	case Tuesday:
+		return "TUESDAY"
+	case Wednesday:
+		return "WEDNESDAY"
+	case Thursday:
+		return "THURSDAY"
+	case Friday:
+		return "FRIDAY"
+	case Saturday:
+		return "SATURDAY"
+	default:
+		return "???"
+
+	}
+}
+
+var AllWeekdays = []Weekday{
+	Sunday,
+	Monday,
+	Tuesday,
+	Wednesday,
+	Thursday,
+	Friday,
+	Saturday,
+}
+
+type Holliday struct {
+	Name    string  `json:"name"`
+	Weekday Weekday `json:"weekday"`
+}
+
+func TestEnum(t *testing.T) {
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Holliday{}))
+	converter.AddEnumValues(reflect.TypeOf(Weekday(Sunday)), AllWeekdays)
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+
+	desiredResult := `export enum Weekday {
+	SUNDAY = 0,
+	MONDAY = 1,
+	TUESDAY = 2,
+	WEDNESDAY = 3,
+	THURSDAY = 4,
+	FRIDAY = 5,
+	SATURDAY = 6,
+}
+export class Holliday {
+	name: string;
+	weekday: Weekday;
+}`
+	testConverter(t, converter, desiredResult)
+}

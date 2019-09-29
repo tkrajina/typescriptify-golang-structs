@@ -1,6 +1,7 @@
 package typescriptify
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -26,6 +27,8 @@ type TypeScriptify struct {
 	CreateInterface  bool
 
 	golangTypes []reflect.Type
+	enumTypes   []reflect.Type
+	enumValues  map[reflect.Type][]interface{}
 	types       map[reflect.Kind]string
 
 	// throwaway, used when converting
@@ -99,11 +102,38 @@ func (t *TypeScriptify) AddType(typeOf reflect.Type) {
 	t.golangTypes = append(t.golangTypes, typeOf)
 }
 
+func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) {
+	if t.enumValues == nil {
+		t.enumValues = map[reflect.Type][]interface{}{}
+	}
+
+	items := reflect.ValueOf(values)
+	if items.Kind() != reflect.Slice {
+		panic(fmt.Sprintf("Values for %s isn't a slice", typeOf.Name()))
+	}
+	for i := 0; i < items.Len(); i++ {
+		item := items.Index(i)
+		t.enumValues[typeOf] = append(t.enumValues[typeOf], item.Interface())
+	}
+
+	t.enumTypes = append(t.enumTypes, typeOf)
+}
+
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 	t.alreadyConverted = make(map[reflect.Type]bool)
 
 	result := ""
+	for _, typeof := range t.enumTypes {
+
+		typeScriptCode, err := t.convertEnum(typeof, t.enumValues[typeof])
+		if err != nil {
+			return "", err
+		}
+		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
+	}
+
 	for _, typeof := range t.golangTypes {
+
 		typeScriptCode, err := t.convertType(typeof, customCode)
 		if err != nil {
 			return "", err
@@ -206,6 +236,39 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 	return nil
 }
 
+type TSNamer interface {
+	TSName() string
+}
+
+func (t *TypeScriptify) convertEnum(typeOf reflect.Type, values []interface{}) (string, error) {
+	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
+		return "", nil
+	}
+	t.alreadyConverted[typeOf] = true
+
+	entityName := t.Prefix + typeOf.Name() + t.Suffix
+	result := "enum " + entityName + " {\n"
+
+	for _, val := range values {
+		byts, _ := json.Marshal(val)
+		name := fmt.Sprintf("VALUE_%s", string(byts))
+		if withName, is := val.(TSNamer); is {
+			name = withName.TSName()
+		} else if s, is := val.(fmt.Stringer); is {
+			name = strings.ToUpper(s.String())
+		}
+		result += fmt.Sprintf("%s%s = %s,\n", t.Indent, name, string(byts))
+	}
+
+	result += "}"
+
+	if !t.DontExport {
+		result = "export " + result
+	}
+
+	return result, nil
+}
+
 func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
@@ -256,6 +319,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			customTSType := field.Tag.Get(tsType)
 			if customTransformation != "" {
 				err = builder.AddSimpleField(jsonFieldName, field)
+			} else if _, isEnum := t.enumValues[field.Type]; isEnum {
+				builder.AddEnumField(jsonFieldName, field)
 			} else if customTSType != "" { // Struct:
 				err = builder.AddSimpleField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Struct { // Struct:
@@ -375,6 +440,11 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 	}
 
 	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
+}
+
+func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.StructField) {
+	fieldType := field.Type.Name()
+	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
