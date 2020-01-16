@@ -46,10 +46,10 @@ export class PersonalInfo {
 }
 export class Person {
     name: string;
-    personal_info: PersonalInfo;
+    personal_info: PersonalInfo | undefined;
     nicknames: string[];
     addresses: Address[];
-    address: Address;
+    address: Address | undefined;
     metadata: {[key:string]:string};
     friends: Person[];
 

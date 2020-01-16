@@ -54,10 +54,10 @@ export class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address: Address | undefined;
 		metadata: {[key:string]:string};
 		friends: Person[];
-        a: Dummy;
+        a: Dummy | undefined;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -82,10 +82,10 @@ class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address: Address | undefined;
 		metadata: {[key:string]:string};
 		friends: Person[];
-        a: Dummy;
+        a: Dummy | undefined;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -111,10 +111,10 @@ interface Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address: Address | undefined;
 		metadata: {[key:string]:string};
 		friends: Person[];
-        a: Dummy;
+        a: Dummy | undefined;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -138,10 +138,10 @@ export class Person {
         name: string;
 		nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address: Address | undefined;
 		metadata: {[key:string]:string};
 		friends: Person[];
-        a: Dummy;
+        a: Dummy | undefined;
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -161,11 +161,9 @@ func TestWithPrefixes(t *testing.T) {
 	desiredResult := `class test_Dummy_test {
     something: string;
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new test_Dummy_test();
-        result.something = source["something"];
-        return result;
+        this.something = source["something"];
     }
 
 }
@@ -173,12 +171,10 @@ class test_Address_test {
     duration: number;
     text?: string;
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new test_Address_test();
-        result.duration = source["duration"];
-        result.text = source["text"];
-        return result;
+        this.duration = source["duration"];
+        this.text = source["text"];
     }
 
 }
@@ -186,22 +182,20 @@ class test_Person_test {
     name: string;
     nicknames: string[];
     addresses: test_Address_test[];
-    address: test_Address_test;
+    address: test_Address_test | undefined;
     metadata: {[key:string]:string};
     friends: test_Person_test[];
-    a: test_Dummy_test;
+    a: test_Dummy_test | undefined;
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new test_Person_test();
-        result.name = source["name"];
-        result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] ? source["addresses"].map(function(element: any) { return test_Address_test.createFrom(element); }) : null;
-        result.address = source["address"] ? test_Address_test.createFrom(source["address"]) : null;
-        result.metadata = source["metadata"];
-        result.friends = source["friends"] ? source["friends"].map(function(element: any) { return test_Person_test.createFrom(element); }) : null;
-        result.a = source["a"] ? test_Dummy_test.createFrom(source["a"]) : null;
-        return result;
+        this.name = source["name"];
+        this.nicknames = source["nicknames"];
+        this.addresses = source["addresses"] ? source["addresses"].map(function(element: any) { return new test_Address_test(element); }) : null;
+        this.address = source["address"] ? new test_Address_test(source["address"]) : undefined;
+        this.metadata = source["metadata"];
+        this.friends = source["friends"] ? source["friends"].map(function(element: any) { return new test_Person_test(element); }) : null;
+        this.a = source["a"] ? new test_Dummy_test(source["a"]) : undefined;
     }
 
 }`
@@ -275,11 +269,9 @@ func TestDate(t *testing.T) {
 	desiredResult := `export class TestCustomType {
     time: Date;
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new TestCustomType();
-        result.time = new Date(source["time"]);
-        return result;
+        this.time = new Date(source["time"]);
     }
 
 }`
@@ -300,11 +292,9 @@ func TestRecursive(t *testing.T) {
 	desiredResult := `export class Test {
     children: Test[];
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Test();
-        result.children = source["children"] ? source["children"].map(function(element: any) { return Test.createFrom(element); }) : null;
-        return result;
+        this.children = source["children"] ? source["children"].map(function(element: any) { return new Test(element); }) : null;
     }
 
 }`
@@ -328,22 +318,18 @@ func TestArrayOfArrays(t *testing.T) {
 	desiredResult := `export class Key {
     key: string;
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Key();
-        result.key = source["key"];
-        return result;
+        this.key = source["key"];
     }
 
 }
 export class Keyboard {
     keys: Key[][];
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Keyboard();
-        result.keys = source["keys"] ? source["keys"].map(function(element: any) { return Key.createFrom(element); }) : null;
-        return result;
+        this.keys = source["keys"] ? source["keys"].map(function(element: any) { return new Key(element); }) : null;
     }
 
 }`
@@ -364,11 +350,9 @@ func TestAny(t *testing.T) {
 	desiredResult := `export class Test {
     field: any;
 
-    static createFrom(source: any) {
+    constructor(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Test();
-        result.field = source["field"];
-        return result;
+        this.field = source["field"];
     }
 
 }`
