@@ -127,11 +127,11 @@ class Address {
 The lines between `//[Address:]` and `//[end]` will be left intact after `ConvertToFile()`.
 
 If your custom code contain methods, then just casting yout object to the target class (with `<Person> {...}`) won't work because the casted object won't contain your methods.
-In that case, you can configure the converter to create static `createFrom` methods:
+In that case, you can configure the converter to create static `constructor` methods:
 
 ```golang
 converter := typescriptify.New()
-converter.CreateFromMethod = true
+converter.ConstructorMethod = true
 converter.Indent = "    "
 ```
 
@@ -140,16 +140,16 @@ The TypeScript code will now be:
 ```typescript
 class Person {
     name: string;
-    personal_info: PersonalInfo;
+    personal_info: PersonalInfo | undefined;
     nicknames: string[];
     addresses: Address[];
 
-    static createFrom(source: any) {
+    static constructor(source: any) {
         var result = new Person();
         result.name = source["name"];
-        result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
+        result.personal_info = source["personal_info"] ? new PersonalInfo(source["personal_info"]) : undefined;
         result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] ? source["addresses"].map(function(element) { return Address.createFrom(element); }) : null;
+        result.addresses = source["addresses"] ? source["addresses"].map(function(element) { return Address(element); }) : null;
         return result;
     }
 
@@ -166,7 +166,7 @@ class Person {
 And now, instead of casting to `Person` you need to:
 
 ```typescript
-var person = Person.createFrom({"name":"Me myself","nicknames":["aaa", "bbb"]});
+var person = new Person({"name":"Me myself","nicknames":["aaa", "bbb"]});
 ```
 
 If you use golang JSON structs as responses from your API, you may want to have a common prefix for all the generated models:
@@ -212,15 +212,13 @@ Generated typescript:
 export class Data {
     time: Date;
 
-    static createFrom(source: any) {
+    static constructor(source: any) {
         var result = new TestCustomType();
         result.time = new Date(source["time"]);
         return result;
     }
 }
 ```
-
-In this case, you should always use `Data.createFrom(json)` instead of just casting `<Data>json`.
 
 ## Enums
 
