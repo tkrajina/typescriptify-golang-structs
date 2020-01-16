@@ -18,13 +18,13 @@ const (
 )
 
 type TypeScriptify struct {
-	Prefix           string
-	Suffix           string
-	Indent           string
-	CreateFromMethod bool
-	BackupDir        string // If empty no backup
-	DontExport       bool
-	CreateInterface  bool
+	Prefix            string
+	Suffix            string
+	Indent            string
+	ConstructorMethod bool
+	BackupDir         string // If empty no backup
+	DontExport        bool
+	CreateInterface   bool
 
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
@@ -63,7 +63,7 @@ func New() *TypeScriptify {
 	result.types = types
 
 	result.Indent = "    "
-	result.CreateFromMethod = true
+	result.ConstructorMethod = true
 
 	return result
 }
@@ -298,7 +298,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			field.Type = field.Type.Elem()
 		}
 		jsonTag := field.Tag.Get("json")
-		jsonFieldName := ""
+		jsonFieldName := field.Name
+
 		if len(jsonTag) > 0 {
 			jsonTagParts := strings.Split(jsonTag, ",")
 			if len(jsonTagParts) > 0 {
@@ -332,6 +333,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					result = typeScriptChunk + "\n" + result
 				}
 				builder.AddStructField(jsonFieldName, field)
+			} else if field.Type.Kind() == reflect.Map {
+				builder.AddMapField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Slice { // Slice:
 				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
 					field.Type = field.Type.Elem()
@@ -365,12 +368,10 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 
 	result += builder.fields
-	if !t.CreateInterface && t.CreateFromMethod {
-		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
+	if !t.CreateInterface && t.ConstructorMethod {
+		result += fmt.Sprintf("\n%sconstructor(source: any) {\n", t.Indent)
 		result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
-		result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
 		result += builder.createFromMethodBody
-		result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
 		result += fmt.Sprintf("%s}\n\n", t.Indent)
 	}
 
@@ -403,16 +404,16 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 		customTSType := field.Tag.Get(tsType)
 		if len(customTSType) > 0 {
 			t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, customTSType)
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
+			t.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
 			return nil
 		} else if len(typeScriptType) > 0 {
 			t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, typeScriptType, strings.Repeat("[]", arrayDepth))
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
+			t.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
 			return nil
 		}
 	}
 
-	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
+	return fmt.Errorf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType)
 }
 
 func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {
@@ -430,16 +431,16 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
 		if customTransformation == "" {
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
+			t.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
 		} else {
 			val := fmt.Sprintf(`source["%s"]`, strippedFieldName)
 			expression := strings.Replace(customTransformation, "__VALUE__", val, -1)
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = %s;\n", t.indent, t.indent, strippedFieldName, expression)
+			t.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = %s;\n", t.indent, t.indent, strippedFieldName, expression)
 		}
 		return nil
 	}
 
-	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
+	return errors.New("Cannot find type for " + fieldType + ", field: " + fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.StructField) {
@@ -450,13 +451,32 @@ func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.St
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
-	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null;\n", t.indent, t.indent, strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix, strippedFieldName)
+	t.fields += fmt.Sprintf("%s%s: %s | undefined;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
+	t.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? new %s(source[\"%s\"]) : undefined;\n", t.indent, t.indent, strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix, strippedFieldName)
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 	t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth))
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return %s.createFrom(element); }) : null;\n", t.indent, t.indent, strippedFieldName, strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix)
+	t.createFromMethodBody += fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return new %s(element); }) : null;\n", t.indent, t.indent, strippedFieldName, strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix)
+}
+
+func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.StructField) {
+	keyType := field.Type.Key()
+	valueType := field.Type.Elem()
+	valueTypeName := valueType.Name()
+	if valueType.Kind() == reflect.Interface {
+		valueTypeName = "any"
+	}
+	if valueType.Kind() == reflect.Array || valueType.Kind() == reflect.Slice {
+		valueTypeName = valueType.Elem().Name() + "[]"
+	}
+	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
+
+	t.fields += fmt.Sprintf("%s%s: {[key: %s]:%s};\n", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName)
+	t.createFromMethodBody +=
+		fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"] : null;\n",
+			t.indent, t.indent, strippedFieldName,
+			strippedFieldName, strippedFieldName)
 }

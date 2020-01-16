@@ -40,7 +40,7 @@ func TestTypescriptifyWithTypes(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class Dummy {
@@ -67,7 +67,7 @@ func TestTypescriptifyWithInstances(t *testing.T) {
 
 	converter.Add(Person{})
 	converter.Add(Dummy{})
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
 
@@ -95,7 +95,7 @@ func TestTypescriptifyWithInterfaces(t *testing.T) {
 
 	converter.Add(Person{})
 	converter.Add(Dummy{})
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
 	converter.CreateInterface = true
@@ -124,7 +124,7 @@ func TestTypescriptifyWithDoubleClasses(t *testing.T) {
 
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class Dummy {
@@ -153,10 +153,10 @@ func TestWithPrefixes(t *testing.T) {
 	converter.Suffix = "_test"
 
 	converter.Add(Person{})
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
-	converter.CreateFromMethod = true
+	converter.ConstructorMethod = true
 
 	desiredResult := `class test_Dummy_test {
     something: string;
@@ -252,7 +252,7 @@ func TestTypescriptifyCustomType(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(TestCustomType{}))
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class TestCustomType {
@@ -269,7 +269,7 @@ func TestDate(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(TestCustomType{}))
-	converter.CreateFromMethod = true
+	converter.ConstructorMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class TestCustomType {
@@ -294,7 +294,7 @@ func TestRecursive(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Test{}))
-	converter.CreateFromMethod = true
+	converter.ConstructorMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class Test {
@@ -322,7 +322,7 @@ func TestArrayOfArrays(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Keyboard{}))
-	converter.CreateFromMethod = true
+	converter.ConstructorMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class Key {
@@ -358,7 +358,7 @@ func TestAny(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Test{}))
-	converter.CreateFromMethod = true
+	converter.ConstructorMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class Test {
@@ -389,7 +389,7 @@ func TestTypeAlias(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class Person {
@@ -416,7 +416,7 @@ func TestOverrideCustomType(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(SomeStruct{}))
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class SomeStruct {
@@ -484,7 +484,7 @@ func TestEnum(t *testing.T) {
 
 	converter.AddType(reflect.TypeOf(Holliday{}))
 	converter.AddEnumValues(reflect.TypeOf(Weekday(Sunday)), AllWeekdays)
-	converter.CreateFromMethod = false
+	converter.ConstructorMethod = false
 	converter.BackupDir = ""
 
 	desiredResult := `export enum Weekday {
