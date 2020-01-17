@@ -334,6 +334,41 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				}
 				builder.AddStructField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Map {
+				// Also convert map key types if needed
+				var keyTypeToConvert reflect.Type
+				switch field.Type.Key().Kind() {
+				case reflect.Struct:
+					keyTypeToConvert = field.Type.Key()
+				case reflect.Ptr:
+					keyTypeToConvert = field.Type.Key().Elem()
+				}
+				if keyTypeToConvert != nil {
+					typeScriptChunk, err := t.convertType(keyTypeToConvert, customCode)
+					if err != nil {
+						return "", err
+					}
+					if typeScriptChunk != "" {
+						result = typeScriptChunk + "\n" + result
+					}
+				}
+				// Also convert map value types if needed
+				var valueTypeToConvert reflect.Type
+				switch field.Type.Elem().Kind() {
+				case reflect.Struct:
+					valueTypeToConvert = field.Type.Elem()
+				case reflect.Ptr:
+					valueTypeToConvert = field.Type.Elem().Elem()
+				}
+				if valueTypeToConvert != nil {
+					typeScriptChunk, err := t.convertType(valueTypeToConvert, customCode)
+					if err != nil {
+						return "", err
+					}
+					if typeScriptChunk != "" {
+						result = typeScriptChunk + "\n" + result
+					}
+				}
+
 				builder.AddMapField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Slice { // Slice:
 				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
@@ -466,15 +501,18 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	keyType := field.Type.Key()
 	valueType := field.Type.Elem()
 	valueTypeName := valueType.Name()
-	if valueType.Kind() == reflect.Interface {
-		valueTypeName = "any"
+	if name, ok := t.types[valueType.Kind()]; ok {
+		valueTypeName = name
 	}
 	if valueType.Kind() == reflect.Array || valueType.Kind() == reflect.Slice {
 		valueTypeName = valueType.Elem().Name() + "[]"
 	}
+	if valueType.Kind() == reflect.Ptr {
+		valueTypeName = valueType.Elem().Name()
+	}
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 
-	t.fields += fmt.Sprintf("%s%s: {[key: %s]:%s};\n", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName)
+	t.fields += fmt.Sprintf("%s%s: Map<%s, %s>;\n", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName)
 	t.constructorMethodBody +=
 		fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"] : null;\n",
 			t.indent, t.indent, strippedFieldName,
