@@ -512,7 +512,7 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	}
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 
-	t.fields += fmt.Sprintf("%s%s: Map<%s, %s>;\n", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName)
+	t.fields += fmt.Sprintf("%s%s: {[key: %s]: %s};\n", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName)
 	t.constructorMethodBody +=
 		fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"] : null;\n",
 			t.indent, t.indent, strippedFieldName,
