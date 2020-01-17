@@ -45,9 +45,11 @@ type Params struct {
 
 func main() {
 	var packagePath, target, backupDir string
+	var createInterface bool
 	flag.StringVar(&packagePath, "package", "", "Path of the package with models")
 	flag.StringVar(&target, "target", "", "Target typescript file")
 	flag.StringVar(&backupDir, "backup", "", "Directory where backup files are saved")
+	flag.BoolVar(&createInterface, "create-interface", false, "Create interface instead of class")
 	flag.Parse()
 
 	structs := []string{}
@@ -102,7 +104,8 @@ func main() {
 		ModelsPackage: packagePath,
 		TargetFile:    target,
 		InitParams: map[string]interface{}{
-			"BackupDir": fmt.Sprintf(`"%s"`, backupDir),
+			"BackupDir":       fmt.Sprintf(`"%s"`, backupDir),
+			"CreateInterface": createInterface,
 		},
 	}
 	err = t.Execute(f, p)
