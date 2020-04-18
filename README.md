@@ -239,6 +239,16 @@ const (
 	Saturday
 )
 
+var AllWeekdays = []Weekday{
+	Sunday,
+	Monday,
+	Tuesday,
+	Wednesday,
+	Thursday,
+	Friday,
+	Saturday,
+}
+
 func (w Weekday) TSName() string {
 	switch w {
 	case Sunday:
