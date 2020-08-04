@@ -102,21 +102,31 @@ func (t *TypeScriptify) AddType(typeOf reflect.Type) {
 	t.golangTypes = append(t.golangTypes, typeOf)
 }
 
-func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) {
+func (t *TypeScriptify) AddEnum(values interface{}) {
 	if t.enumValues == nil {
 		t.enumValues = map[reflect.Type][]interface{}{}
 	}
 
 	items := reflect.ValueOf(values)
 	if items.Kind() != reflect.Slice {
-		panic(fmt.Sprintf("Values for %s isn't a slice", typeOf.Name()))
-	}
-	for i := 0; i < items.Len(); i++ {
-		item := items.Index(i)
-		t.enumValues[typeOf] = append(t.enumValues[typeOf], item.Interface())
+		panic(fmt.Sprintf("Values for %T isn't a slice", values))
 	}
 
-	t.enumTypes = append(t.enumTypes, typeOf)
+	var ty reflect.Type
+	for i := 0; i < items.Len(); i++ {
+		item := items.Index(i)
+		if i == 0 {
+			ty = item.Type()
+		}
+		t.enumValues[ty] = append(t.enumValues[ty], item.Interface())
+	}
+
+	t.enumTypes = append(t.enumTypes, ty)
+}
+
+// AddEnumValues is deprecated, use `AddEnum()`
+func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) {
+	t.AddEnum(values)
 }
 
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {

@@ -483,7 +483,7 @@ func TestEnum(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Holliday{}))
-	converter.AddEnumValues(reflect.TypeOf(Weekday(Sunday)), AllWeekdays)
+	converter.AddEnum(AllWeekdays)
 	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 
