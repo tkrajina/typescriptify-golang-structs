@@ -196,11 +196,11 @@ class test_Person_test {
         const result = new test_Person_test();
         result.name = source["name"];
         result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] ? source["addresses"].map(function(element: any) { return test_Address_test.createFrom(element); }) : null;
-        result.address = source["address"] ? test_Address_test.createFrom(source["address"]) : null;
+        result.addresses = source["addresses"] && source["addresses"].map(function(element: any) { return test_Address_test.createFrom(element); });
+        result.address = test_Address_test.createFrom(source["address"]);
         result.metadata = source["metadata"];
-        result.friends = source["friends"] ? source["friends"].map(function(element: any) { return test_Person_test.createFrom(element); }) : null;
-        result.a = source["a"] ? test_Dummy_test.createFrom(source["a"]) : null;
+        result.friends = source["friends"] && source["friends"].map(function(element: any) { return test_Person_test.createFrom(element); });
+        result.a = test_Dummy_test.createFrom(source["a"]);
         return result;
     }
 
@@ -303,7 +303,7 @@ func TestRecursive(t *testing.T) {
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
         const result = new Test();
-        result.children = source["children"] ? source["children"].map(function(element: any) { return Test.createFrom(element); }) : null;
+        result.children = source["children"] && source["children"].map(function(element: any) { return Test.createFrom(element); });
         return result;
     }
 
@@ -342,7 +342,7 @@ export class Keyboard {
     static createFrom(source: any) {
         if ('string' === typeof source) source = JSON.parse(source);
         const result = new Keyboard();
-        result.keys = source["keys"] ? source["keys"].map(function(element: any) { return Key.createFrom(element); }) : null;
+        result.keys = source["keys"] && source["keys"].map(function(element: any) { return Key.createFrom(element); });
         return result;
     }
 

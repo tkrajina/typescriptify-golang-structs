@@ -57,12 +57,12 @@ var Person = /** @class */ (function () {
             source = JSON.parse(source);
         var result = new Person();
         result.name = source["name"];
-        result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
+        result.personal_info = PersonalInfo.createFrom(source["personal_info"]);
         result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] ? source["addresses"].map(function (element) { return Address.createFrom(element); }) : null;
-        result.address = source["address"] ? Address.createFrom(source["address"]) : null;
+        result.addresses = source["addresses"] && source["addresses"].map(function (element) { return Address.createFrom(element); });
+        result.address = Address.createFrom(source["address"]);
         result.metadata = source["metadata"];
-        result.friends = source["friends"] ? source["friends"].map(function (element) { return Person.createFrom(element); }) : null;
+        result.friends = source["friends"] && source["friends"].map(function (element) { return Person.createFrom(element); });
         return result;
     };
     return Person;
