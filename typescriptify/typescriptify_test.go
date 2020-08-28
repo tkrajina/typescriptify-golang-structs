@@ -487,7 +487,7 @@ func TestEnum(t *testing.T) {
 	converter := New().
 		AddType(reflect.TypeOf(Holliday{})).
 		AddEnum(AllWeekdays).
-		WithCreateFromMethod(false).
+		WithCreateFromMethod(true).
 		WithBackupDir("")
 
 	desiredResult := `export enum Weekday {
@@ -502,6 +502,15 @@ func TestEnum(t *testing.T) {
 export class Holliday {
 	name: string;
 	weekday: Weekday;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Holliday();
+        result.name = source["name"];
+        result.weekday = source["weekday"];
+        return result;
+    }
+
 }`
 	testConverter(t, converter, desiredResult)
 }

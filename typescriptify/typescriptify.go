@@ -475,6 +475,8 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Name()
 	t.addField(fieldName, t.prefix+fieldType+t.suffix)
+	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
+	t.addInitializerFieldLine("result", strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
