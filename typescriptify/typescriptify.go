@@ -115,6 +115,16 @@ func (t *TypeScriptify) WithBackupDir(b string) *TypeScriptify {
 	return t
 }
 
+func (t *TypeScriptify) WithPrefix(p string) *TypeScriptify {
+	t.Prefix = p
+	return t
+}
+
+func (t *TypeScriptify) WithSuffix(s string) *TypeScriptify {
+	t.Suffix = s
+	return t
+}
+
 func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 	t.AddType(reflect.TypeOf(obj))
 	return t
