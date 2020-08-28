@@ -214,6 +214,10 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string)
 		panic(err.Error())
 	}
 
+	fmt.Println("----------------------------------------------------------------------------------------------------")
+	fmt.Println(typeScriptCode)
+	fmt.Println("----------------------------------------------------------------------------------------------------")
+
 	desiredResult = strings.TrimSpace(desiredResult)
 	typeScriptCode = strings.Trim(typeScriptCode, " \t\n\r")
 	if typeScriptCode != desiredResult {
