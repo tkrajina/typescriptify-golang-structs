@@ -545,3 +545,61 @@ export class Holliday {
 }`
 	testConverter(t, converter, desiredResult)
 }
+
+func TestConstructorWithReferences(t *testing.T) {
+	converter := New().
+		AddType(reflect.TypeOf(Person{})).
+		AddEnum(AllWeekdays).
+		WithConstructor(true).
+		WithCreateFromMethod(false).
+		WithBackupDir("")
+
+	desiredResult := `export enum Weekday {
+    SUNDAY = 0,
+    MONDAY = 1,
+    TUESDAY = 2,
+    WEDNESDAY = 3,
+    THURSDAY = 4,
+    FRIDAY = 5,
+    SATURDAY = 6,
+}
+export class Dummy {
+    something: string;
+
+    constructor(source: any) {
+        this.something = source["something"];
+    }
+
+}
+export class Address {
+    duration: number;
+    text?: string;
+
+    constructor(source: any) {
+        this.duration = source["duration"];
+        this.text = source["text"];
+    }
+
+}
+export class Person {
+    name: string;
+    nicknames: string[];
+    addresses: Address[];
+    address: Address;
+    metadata: {[key:string]:string};
+    friends: Person[];
+    a: Dummy;
+
+    constructor(source: any) {
+        this.name = source["name"];
+        this.nicknames = source["nicknames"];
+        this.addresses = source["addresses"] && source["addresses"].map(function(element: any) { return new Address(element); });
+        this.address = source["address"] && new Address(source["address"]);
+        this.metadata = source["metadata"];
+        this.friends = source["friends"] && source["friends"].map(function(element: any) { new Person(element); });
+        this.a = Dummy.createFrom(source["a"]);
+    }
+
+}`
+	testConverter(t, converter, desiredResult)
+}
