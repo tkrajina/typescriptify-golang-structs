@@ -433,11 +433,11 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 		customTSType := field.Tag.Get(tsType)
 		if len(customTSType) > 0 {
 			t.addField(fieldName, customTSType)
-			t.addInitializerFieldLine("result", strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
+			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 			return nil
 		} else if len(typeScriptType) > 0 {
 			t.addField(fieldName, fmt.Sprint(typeScriptType, strings.Repeat("[]", arrayDepth)))
-			t.addInitializerFieldLine("result", strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
+			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 			return nil
 		}
 	}
@@ -460,11 +460,11 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 		t.addField(fieldName, typeScriptType)
 		if customTransformation == "" {
-			t.addInitializerFieldLine("result", strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
+			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 		} else {
 			val := fmt.Sprintf(`source["%s"]`, strippedFieldName)
 			expression := strings.Replace(customTransformation, "__VALUE__", val, -1)
-			t.addInitializerFieldLine("result", strippedFieldName, expression)
+			t.addInitializerFieldLine(strippedFieldName, expression)
 		}
 		return nil
 	}
@@ -476,29 +476,27 @@ func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.St
 	fieldType := field.Type.Name()
 	t.addField(fieldName, t.prefix+fieldType+t.suffix)
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
-	t.addInitializerFieldLine("result", strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 	t.addField(fieldName, t.prefix+fieldType+t.suffix)
-	t.addInitializerFieldLine("result", strippedFieldName, fmt.Sprintf("source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null", strippedFieldName, t.prefix+fieldType+t.suffix, strippedFieldName))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] ? %s.createFrom(source[\"%s\"]) : null", strippedFieldName, t.prefix+fieldType+t.suffix, strippedFieldName))
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 	t.addField(fieldName, fmt.Sprint(t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth)))
-	t.addInitializerFieldLine("result", strippedFieldName, fmt.Sprintf("source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return %s.createFrom(element); }) : null", strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] ? source[\"%s\"].map(function(element: any) { return %s.createFrom(element); }) : null", strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix))
 }
 
-func (t *typeScriptClassBuilder) addInitializerFieldLine(variable, fld, initializer string) {
-	line := fmt.Sprintf("%s%s%s.%s = %s;", t.indent, t.indent, variable, fld, initializer)
-	t.createFromMethodBody = append(t.createFromMethodBody, line)
+func (t *typeScriptClassBuilder) addInitializerFieldLine(fld, initializer string) {
+	t.createFromMethodBody = append(t.createFromMethodBody, fmt.Sprint(t.indent, t.indent, "result.", fld, " = ", initializer, ";"))
 }
 
 func (t *typeScriptClassBuilder) addField(fld, fldType string) {
-	line := fmt.Sprintf("%s%s: %s;", t.indent, fld, fldType)
-	t.fields = append(t.fields, line)
+	t.fields = append(t.fields, fmt.Sprint(t.indent, fld, ": ", fldType, ";"))
 }
