@@ -2,68 +2,62 @@
 /* Do not change, this code is generated from Golang structs */
 exports.__esModule = true;
 var Address = /** @class */ (function () {
-    function Address() {
+    function Address(source) {
         var _this = this;
         //[Address:]
         /* Custom code here */
         this.getAddressString = function () {
             return _this.city + " " + _this.number;
         };
-        //[end]
-    }
-    Address.createFrom = function (source) {
         if ('string' === typeof source)
             source = JSON.parse(source);
-        var result = new Address();
-        result.city = source["city"];
-        result.number = source["number"];
-        result.country = source["country"];
-        return result;
+        this.city = source["city"];
+        this.number = source["number"];
+        this.country = source["country"];
+    }
+    Address.createFrom = function (source) {
+        return new Address(source);
     };
     return Address;
 }());
 exports.Address = Address;
 var PersonalInfo = /** @class */ (function () {
-    function PersonalInfo() {
+    function PersonalInfo(source) {
         var _this = this;
         //[PersonalInfo:]
         this.getPersonalInfoString = function () {
             return "pet:" + _this.pet_name;
         };
-        //[end]
-    }
-    PersonalInfo.createFrom = function (source) {
         if ('string' === typeof source)
             source = JSON.parse(source);
-        var result = new PersonalInfo();
-        result.hobby = source["hobby"];
-        result.pet_name = source["pet_name"];
-        return result;
+        this.hobby = source["hobby"];
+        this.pet_name = source["pet_name"];
+    }
+    PersonalInfo.createFrom = function (source) {
+        return new PersonalInfo(source);
     };
     return PersonalInfo;
 }());
 exports.PersonalInfo = PersonalInfo;
 var Person = /** @class */ (function () {
-    function Person() {
+    function Person(source) {
         var _this = this;
         //[Person:]
         this.getInfo = function () {
             return "name:" + _this.name;
         };
-        //[end]
-    }
-    Person.createFrom = function (source) {
         if ('string' === typeof source)
             source = JSON.parse(source);
-        var result = new Person();
-        result.name = source["name"];
-        result.personal_info = PersonalInfo.createFrom(source["personal_info"]);
-        result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] && source["addresses"].map(function (element) { return Address.createFrom(element); });
-        result.address = Address.createFrom(source["address"]);
-        result.metadata = source["metadata"];
-        result.friends = source["friends"] && source["friends"].map(function (element) { return Person.createFrom(element); });
-        return result;
+        this.name = source["name"];
+        this.personal_info = source["personal_info"] && new PersonalInfo(source["personal_info"]);
+        this.nicknames = source["nicknames"];
+        this.addresses = source["addresses"] && source["addresses"].map(function (element) { return new Address(element); });
+        this.address = source["address"] && new Address(source["address"]);
+        this.metadata = source["metadata"];
+        this.friends = source["friends"] && source["friends"].map(function (element) { return new Person(element); });
+    }
+    Person.createFrom = function (source) {
+        return new Person(source);
     };
     return Person;
 }());

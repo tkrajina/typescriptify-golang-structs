@@ -400,20 +400,23 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		}
 	}
 
+	if t.CreateFromMethod {
+		fmt.Fprintln(os.Stderr, "CREATEFROM METHOD IS DEPRECATED AND WILL BE REMOVED!!!!!!")
+		t.CreateConstructor = true
+	}
+
 	result += strings.Join(builder.fields, "\n") + "\n"
 	if !t.CreateInterface {
 		if t.CreateFromMethod {
 			result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
-			result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
-			result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
-			result += strings.Join(builder.createFromMethodBody, "\n") + "\n"
-			result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
-			result += fmt.Sprintf("%s}\n\n", t.Indent)
+			result += fmt.Sprintf("%s%sreturn new %s(source);\n", t.Indent, t.Indent, entityName)
+			result += fmt.Sprintf("%s}\n", t.Indent)
 		}
 		if t.CreateConstructor {
 			result += fmt.Sprintf("\n%sconstructor(source: any) {\n", t.Indent)
+			result += t.Indent + t.Indent + "if ('string' === typeof source) source = JSON.parse(source);\n"
 			result += strings.Join(builder.constructorBody, "\n") + "\n"
-			result += fmt.Sprintf("%s}\n\n", t.Indent)
+			result += fmt.Sprintf("%s}\n", t.Indent)
 		}
 	}
 
@@ -497,14 +500,14 @@ func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.
 	fieldType := field.Type.Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 	t.addField(fieldName, t.prefix+fieldType+t.suffix)
-	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("%s.createFrom(source[\"%s\"])", t.prefix+fieldType+t.suffix, strippedFieldName))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] && new %s(source[\"%s\"])", strippedFieldName, t.prefix+fieldType+t.suffix, strippedFieldName))
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 	t.addField(fieldName, fmt.Sprint(t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth)))
-	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] && source[\"%s\"].map(function(element: any) { return %s.createFrom(element); })", strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] && source[\"%s\"].map((element: any) => new %s(element))", strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix))
 }
 
 func (t *typeScriptClassBuilder) addInitializerFieldLine(fld, initializer string) {

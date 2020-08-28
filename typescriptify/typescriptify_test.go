@@ -159,28 +159,30 @@ func TestWithPrefixes(t *testing.T) {
 	converter.CreateFromMethod = true
 
 	desiredResult := `class test_Dummy_test {
-    something: string;
+	something: string;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new test_Dummy_test();
-        result.something = source["something"];
-        return result;
-    }
+		return new test_Dummy_test(source);
+	}
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.something = source["something"];
+    }
 }
 class test_Address_test {
     duration: number;
-    text?: string;
+	text?: string;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new test_Address_test();
-        result.duration = source["duration"];
-        result.text = source["text"];
-        return result;
-    }
+		return new test_Address_test(source);
+	}
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.duration = source["duration"];
+        this.text = source["text"];
+    }
 }
 class test_Person_test {
     name: string;
@@ -189,21 +191,22 @@ class test_Person_test {
     address: test_Address_test;
     metadata: {[key:string]:string};
     friends: test_Person_test[];
-    a: test_Dummy_test;
+	a: test_Dummy_test;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new test_Person_test();
-        result.name = source["name"];
-        result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] && source["addresses"].map(function(element: any) { return test_Address_test.createFrom(element); });
-        result.address = test_Address_test.createFrom(source["address"]);
-        result.metadata = source["metadata"];
-        result.friends = source["friends"] && source["friends"].map(function(element: any) { return test_Person_test.createFrom(element); });
-        result.a = test_Dummy_test.createFrom(source["a"]);
-        return result;
-    }
+		return new test_Person_test(source);
+	}
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.name = source["name"];
+        this.nicknames = source["nicknames"];
+        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new test_Address_test(element));
+        this.address = source["address"] && new test_Address_test(source["address"]);
+        this.metadata = source["metadata"];
+        this.friends = source["friends"] && source["friends"].map((element: any) => new test_Person_test(element));
+        this.a = source["a"] && new test_Dummy_test(source["a"]);
+    }
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -277,15 +280,16 @@ func TestDate(t *testing.T) {
 	converter.BackupDir = ""
 
 	desiredResult := `export class TestCustomType {
-    time: Date;
+	time: Date;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new TestCustomType();
-        result.time = new Date(source["time"]);
-        return result;
-    }
+        return new TestCustomType(source);
+	}
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.time = new Date(source["time"]);
+    }
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -302,15 +306,16 @@ func TestRecursive(t *testing.T) {
 	converter.BackupDir = ""
 
 	desiredResult := `export class Test {
-    children: Test[];
+	children: Test[];
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Test();
-        result.children = source["children"] && source["children"].map(function(element: any) { return Test.createFrom(element); });
-        return result;
-    }
+        return new Test(source);
+	}
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.children = source["children"] && source["children"].map((element: any) => new Test(element));
+    }
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -330,26 +335,28 @@ func TestArrayOfArrays(t *testing.T) {
 	converter.BackupDir = ""
 
 	desiredResult := `export class Key {
-    key: string;
+	key: string;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Key();
-        result.key = source["key"];
-        return result;
+        return new Key(source);
     }
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.key = source["key"];
+    }
 }
 export class Keyboard {
     keys: Key[][];
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Keyboard();
-        result.keys = source["keys"] && source["keys"].map(function(element: any) { return Key.createFrom(element); });
-        return result;
+        return new Keyboard(source);
     }
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.keys = source["keys"] && source["keys"].map((element: any) => new Key(element));
+    }
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -366,15 +373,16 @@ func TestAny(t *testing.T) {
 	converter.BackupDir = ""
 
 	desiredResult := `export class Test {
-    field: any;
+	field: any;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Test();
-        result.field = source["field"];
-        return result;
-    }
+		return new Test(source);
+	}
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.field = source["field"];
+    }
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -504,14 +512,15 @@ export class Holliday {
 	name: string;
 	weekday: Weekday;
 
-    static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Holliday();
-        result.name = source["name"];
-        result.weekday = source["weekday"];
-        return result;
+	static createFrom(source: any) {
+        return new Holliday(source);
     }
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.name = source["name"];
+        this.weekday = source["weekday"];
+    }
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -538,10 +547,10 @@ export class Holliday {
 	weekday: Weekday;
 
     constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.weekday = source["weekday"];
     }
-
 }`
 	testConverter(t, converter, desiredResult)
 }
@@ -567,19 +576,19 @@ export class Dummy {
     something: string;
 
     constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
         this.something = source["something"];
     }
-
 }
 export class Address {
     duration: number;
     text?: string;
 
     constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
         this.duration = source["duration"];
         this.text = source["text"];
     }
-
 }
 export class Person {
     name: string;
@@ -591,15 +600,15 @@ export class Person {
     a: Dummy;
 
     constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.nicknames = source["nicknames"];
-        this.addresses = source["addresses"] && source["addresses"].map(function(element: any) { return new Address(element); });
+        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new Address(element));
         this.address = source["address"] && new Address(source["address"]);
         this.metadata = source["metadata"];
-        this.friends = source["friends"] && source["friends"].map(function(element: any) { new Person(element); });
-        this.a = Dummy.createFrom(source["a"]);
+        this.friends = source["friends"] && source["friends"].map((element: any) => new Person(element));
+        this.a = source["a"] && new Dummy(source["a"]);
     }
-
 }`
 	testConverter(t, converter, desiredResult)
 }

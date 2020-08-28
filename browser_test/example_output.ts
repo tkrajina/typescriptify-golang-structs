@@ -7,14 +7,15 @@ export class Address {
     country?: string;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Address();
-        result.city = source["city"];
-        result.number = source["number"];
-        result.country = source["country"];
-        return result;
+        return new Address(source);
     }
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.city = source["city"];
+        this.number = source["number"];
+        this.country = source["country"];
+    }
     //[Address:]
     /* Custom code here */
 
@@ -29,13 +30,14 @@ export class PersonalInfo {
     pet_name: string;
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new PersonalInfo();
-        result.hobby = source["hobby"];
-        result.pet_name = source["pet_name"];
-        return result;
+        return new PersonalInfo(source);
     }
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.hobby = source["hobby"];
+        this.pet_name = source["pet_name"];
+    }
     //[PersonalInfo:]
 
     getPersonalInfoString = () => {
@@ -54,18 +56,19 @@ export class Person {
     friends: Person[];
 
     static createFrom(source: any) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        const result = new Person();
-        result.name = source["name"];
-        result.personal_info = PersonalInfo.createFrom(source["personal_info"]);
-        result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] && source["addresses"].map(function(element: any) { return Address.createFrom(element); });
-        result.address = Address.createFrom(source["address"]);
-        result.metadata = source["metadata"];
-        result.friends = source["friends"] && source["friends"].map(function(element: any) { return Person.createFrom(element); });
-        return result;
+        return new Person(source);
     }
 
+    constructor(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.name = source["name"];
+        this.personal_info = source["personal_info"] && new PersonalInfo(source["personal_info"]);
+        this.nicknames = source["nicknames"];
+        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new Address(element));
+        this.address = source["address"] && new Address(source["address"]);
+        this.metadata = source["metadata"];
+        this.friends = source["friends"] && source["friends"].map((element: any) => new Person(element));
+    }
     //[Person:]
 
     getInfo = () => {
