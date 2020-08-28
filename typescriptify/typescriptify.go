@@ -18,13 +18,14 @@ const (
 )
 
 type TypeScriptify struct {
-	Prefix           string
-	Suffix           string
-	Indent           string
-	CreateFromMethod bool
-	BackupDir        string // If empty no backup
-	DontExport       bool
-	CreateInterface  bool
+	Prefix            string
+	Suffix            string
+	Indent            string
+	CreateFromMethod  bool
+	CreateConstructor bool
+	BackupDir         string // If empty no backup
+	DontExport        bool
+	CreateInterface   bool
 
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
@@ -94,6 +95,16 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
+func (t *TypeScriptify) WithCreateFromMethod(b bool) *TypeScriptify {
+	t.CreateFromMethod = b
+	return t
+}
+
+func (t *TypeScriptify) WithConstructor(b bool) *TypeScriptify {
+	t.CreateConstructor = b
+	return t
+}
+
 func (t *TypeScriptify) WithIndent(i string) *TypeScriptify {
 	t.Indent = i
 	return t
@@ -101,11 +112,6 @@ func (t *TypeScriptify) WithIndent(i string) *TypeScriptify {
 
 func (t *TypeScriptify) WithBackupDir(b string) *TypeScriptify {
 	t.BackupDir = b
-	return t
-}
-
-func (t *TypeScriptify) WithCreateFromMethod(b bool) *TypeScriptify {
-	t.CreateFromMethod = b
 	return t
 }
 
@@ -395,13 +401,20 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 
 	result += strings.Join(builder.fields, "\n") + "\n"
-	if !t.CreateInterface && t.CreateFromMethod {
-		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
-		result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
-		result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
-		result += strings.Join(builder.createFromMethodBody, "\n") + "\n"
-		result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
-		result += fmt.Sprintf("%s}\n\n", t.Indent)
+	if !t.CreateInterface {
+		if t.CreateFromMethod {
+			result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
+			result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
+			result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
+			result += strings.Join(builder.createFromMethodBody, "\n") + "\n"
+			result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
+			result += fmt.Sprintf("%s}\n\n", t.Indent)
+		}
+		if t.CreateConstructor {
+			result += fmt.Sprintf("\n%sconstructor(source: any) {\n", t.Indent)
+			result += strings.Join(builder.constructorBody, "\n") + "\n"
+			result += fmt.Sprintf("%s}\n\n", t.Indent)
+		}
 	}
 
 	if customCode != nil {
@@ -421,6 +434,7 @@ type typeScriptClassBuilder struct {
 	indent               string
 	fields               []string
 	createFromMethodBody []string
+	constructorBody      []string
 	prefix, suffix       string
 }
 
@@ -495,6 +509,7 @@ func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field 
 
 func (t *typeScriptClassBuilder) addInitializerFieldLine(fld, initializer string) {
 	t.createFromMethodBody = append(t.createFromMethodBody, fmt.Sprint(t.indent, t.indent, "result.", fld, " = ", initializer, ";"))
+	t.constructorBody = append(t.constructorBody, fmt.Sprint(t.indent, t.indent, "this.", fld, " = ", initializer, ";"))
 }
 
 func (t *typeScriptClassBuilder) addField(fld, fldType string) {
