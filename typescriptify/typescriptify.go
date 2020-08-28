@@ -94,15 +94,32 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
-func (t *TypeScriptify) Add(obj interface{}) {
+func (t *TypeScriptify) WithIndent(i string) *TypeScriptify {
+	t.Indent = i
+	return t
+}
+
+func (t *TypeScriptify) WithBackupDir(b string) *TypeScriptify {
+	t.BackupDir = b
+	return t
+}
+
+func (t *TypeScriptify) WithCreateFromMethod(b bool) *TypeScriptify {
+	t.CreateFromMethod = b
+	return t
+}
+
+func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 	t.AddType(reflect.TypeOf(obj))
+	return t
 }
 
-func (t *TypeScriptify) AddType(typeOf reflect.Type) {
+func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
 	t.golangTypes = append(t.golangTypes, typeOf)
+	return t
 }
 
-func (t *TypeScriptify) AddEnum(values interface{}) {
+func (t *TypeScriptify) AddEnum(values interface{}) *TypeScriptify {
 	if t.enumValues == nil {
 		t.enumValues = map[reflect.Type][]interface{}{}
 	}
@@ -122,11 +139,14 @@ func (t *TypeScriptify) AddEnum(values interface{}) {
 	}
 
 	t.enumTypes = append(t.enumTypes, ty)
+
+	return t
 }
 
 // AddEnumValues is deprecated, use `AddEnum()`
-func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) {
+func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) *TypeScriptify {
 	t.AddEnum(values)
+	return t
 }
 
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {

@@ -480,12 +480,11 @@ type Holliday struct {
 }
 
 func TestEnum(t *testing.T) {
-	converter := New()
-
-	converter.AddType(reflect.TypeOf(Holliday{}))
-	converter.AddEnum(AllWeekdays)
-	converter.CreateFromMethod = false
-	converter.BackupDir = ""
+	converter := New().
+		AddType(reflect.TypeOf(Holliday{})).
+		AddEnum(AllWeekdays).
+		WithCreateFromMethod(false).
+		WithBackupDir("")
 
 	desiredResult := `export enum Weekday {
 	SUNDAY = 0,
