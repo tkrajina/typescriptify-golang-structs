@@ -4,6 +4,7 @@ exports.__esModule = true;
 var Address = /** @class */ (function () {
     function Address(source) {
         var _this = this;
+        if (source === void 0) { source = {}; }
         //[Address:]
         /* Custom code here */
         this.getAddressString = function () {
@@ -16,6 +17,7 @@ var Address = /** @class */ (function () {
         this.country = source["country"];
     }
     Address.createFrom = function (source) {
+        if (source === void 0) { source = {}; }
         return new Address(source);
     };
     return Address;
@@ -24,6 +26,7 @@ exports.Address = Address;
 var PersonalInfo = /** @class */ (function () {
     function PersonalInfo(source) {
         var _this = this;
+        if (source === void 0) { source = {}; }
         //[PersonalInfo:]
         this.getPersonalInfoString = function () {
             return "pet:" + _this.pet_name;
@@ -34,6 +37,7 @@ var PersonalInfo = /** @class */ (function () {
         this.pet_name = source["pet_name"];
     }
     PersonalInfo.createFrom = function (source) {
+        if (source === void 0) { source = {}; }
         return new PersonalInfo(source);
     };
     return PersonalInfo;
@@ -42,6 +46,7 @@ exports.PersonalInfo = PersonalInfo;
 var Person = /** @class */ (function () {
     function Person(source) {
         var _this = this;
+        if (source === void 0) { source = {}; }
         //[Person:]
         this.getInfo = function () {
             return "name:" + _this.name;
@@ -57,6 +62,7 @@ var Person = /** @class */ (function () {
         this.friends = source["friends"] && source["friends"].map(function (element) { return new Person(element); });
     }
     Person.createFrom = function (source) {
+        if (source === void 0) { source = {}; }
         return new Person(source);
     };
     return Person;

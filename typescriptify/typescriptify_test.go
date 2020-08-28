@@ -161,11 +161,11 @@ func TestWithPrefixes(t *testing.T) {
 	desiredResult := `class test_Dummy_test {
 	something: string;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
 		return new test_Dummy_test(source);
 	}
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.something = source["something"];
     }
@@ -174,11 +174,11 @@ class test_Address_test {
     duration: number;
 	text?: string;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
 		return new test_Address_test(source);
 	}
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.duration = source["duration"];
         this.text = source["text"];
@@ -193,11 +193,11 @@ class test_Person_test {
     friends: test_Person_test[];
 	a: test_Dummy_test;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
 		return new test_Person_test(source);
 	}
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.nicknames = source["nicknames"];
@@ -282,11 +282,11 @@ func TestDate(t *testing.T) {
 	desiredResult := `export class TestCustomType {
 	time: Date;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
         return new TestCustomType(source);
 	}
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.time = new Date(source["time"]);
     }
@@ -308,11 +308,11 @@ func TestRecursive(t *testing.T) {
 	desiredResult := `export class Test {
 	children: Test[];
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
         return new Test(source);
 	}
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.children = source["children"] && source["children"].map((element: any) => new Test(element));
     }
@@ -337,11 +337,11 @@ func TestArrayOfArrays(t *testing.T) {
 	desiredResult := `export class Key {
 	key: string;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
         return new Key(source);
     }
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.key = source["key"];
     }
@@ -349,11 +349,11 @@ func TestArrayOfArrays(t *testing.T) {
 export class Keyboard {
     keys: Key[][];
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
         return new Keyboard(source);
     }
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.keys = source["keys"] && source["keys"].map((element: any) => new Key(element));
     }
@@ -375,11 +375,11 @@ func TestAny(t *testing.T) {
 	desiredResult := `export class Test {
 	field: any;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
 		return new Test(source);
 	}
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.field = source["field"];
     }
@@ -512,11 +512,11 @@ export class Holliday {
 	name: string;
 	weekday: Weekday;
 
-	static createFrom(source: any) {
+	static createFrom(source: any = {}) {
         return new Holliday(source);
     }
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.weekday = source["weekday"];
@@ -546,7 +546,7 @@ export class Holliday {
 	name: string;
 	weekday: Weekday;
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.weekday = source["weekday"];
@@ -575,7 +575,7 @@ func TestConstructorWithReferences(t *testing.T) {
 export class Dummy {
     something: string;
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.something = source["something"];
     }
@@ -584,7 +584,7 @@ export class Address {
     duration: number;
     text?: string;
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.duration = source["duration"];
         this.text = source["text"];
@@ -599,7 +599,7 @@ export class Person {
     friends: Person[];
     a: Dummy;
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.nicknames = source["nicknames"];

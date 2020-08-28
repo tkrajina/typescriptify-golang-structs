@@ -6,11 +6,11 @@ export class Address {
     number: number;
     country?: string;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
         return new Address(source);
     }
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.city = source["city"];
         this.number = source["number"];
@@ -29,11 +29,11 @@ export class PersonalInfo {
     hobby: string[];
     pet_name: string;
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
         return new PersonalInfo(source);
     }
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.hobby = source["hobby"];
         this.pet_name = source["pet_name"];
@@ -55,11 +55,11 @@ export class Person {
     metadata: {[key:string]:string};
     friends: Person[];
 
-    static createFrom(source: any) {
+    static createFrom(source: any = {}) {
         return new Person(source);
     }
 
-    constructor(source: any) {
+    constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.personal_info = source["personal_info"] && new PersonalInfo(source["personal_info"]);

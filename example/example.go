@@ -26,7 +26,7 @@ type Person struct {
 
 func main() {
 	converter := typescriptify.New()
-	converter.CreateFromMethod = true
+	converter.CreateConstructor = true
 	converter.Indent = "    "
 	converter.BackupDir = ""
 

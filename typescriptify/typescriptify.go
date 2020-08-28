@@ -418,12 +418,12 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	result += strings.Join(builder.fields, "\n") + "\n"
 	if !t.CreateInterface {
 		if t.CreateFromMethod {
-			result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
+			result += fmt.Sprintf("\n%sstatic createFrom(source: any = {}) {\n", t.Indent)
 			result += fmt.Sprintf("%s%sreturn new %s(source);\n", t.Indent, t.Indent, entityName)
 			result += fmt.Sprintf("%s}\n", t.Indent)
 		}
 		if t.CreateConstructor {
-			result += fmt.Sprintf("\n%sconstructor(source: any) {\n", t.Indent)
+			result += fmt.Sprintf("\n%sconstructor(source: any = {}) {\n", t.Indent)
 			result += t.Indent + t.Indent + "if ('string' === typeof source) source = JSON.parse(source);\n"
 			result += strings.Join(builder.constructorBody, "\n") + "\n"
 			result += fmt.Sprintf("%s}\n", t.Indent)
