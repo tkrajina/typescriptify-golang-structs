@@ -214,6 +214,10 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string)
 		panic(err.Error())
 	}
 
+	fmt.Println("----------------------------------------------------------------------------------------------------")
+	fmt.Println(typeScriptCode)
+	fmt.Println("----------------------------------------------------------------------------------------------------")
+
 	desiredResult = strings.TrimSpace(desiredResult)
 	typeScriptCode = strings.Trim(typeScriptCode, " \t\n\r")
 	if typeScriptCode != desiredResult {
@@ -480,12 +484,12 @@ type Holliday struct {
 }
 
 func TestEnum(t *testing.T) {
-	converter := New()
-
-	converter.AddType(reflect.TypeOf(Holliday{}))
-	converter.AddEnum(AllWeekdays)
-	converter.CreateFromMethod = false
-	converter.BackupDir = ""
+	converter := New().
+		AddType(reflect.TypeOf(Holliday{})).
+		AddEnum(AllWeekdays).
+		WithConstructor(false).
+		WithCreateFromMethod(true).
+		WithBackupDir("")
 
 	desiredResult := `export enum Weekday {
 	SUNDAY = 0,
@@ -499,6 +503,45 @@ func TestEnum(t *testing.T) {
 export class Holliday {
 	name: string;
 	weekday: Weekday;
+
+    static createFrom(source: any) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        const result = new Holliday();
+        result.name = source["name"];
+        result.weekday = source["weekday"];
+        return result;
+    }
+
+}`
+	testConverter(t, converter, desiredResult)
+}
+
+func TestConstructor(t *testing.T) {
+	converter := New().
+		AddType(reflect.TypeOf(Holliday{})).
+		AddEnum(AllWeekdays).
+		WithConstructor(true).
+		WithCreateFromMethod(false).
+		WithBackupDir("")
+
+	desiredResult := `export enum Weekday {
+	SUNDAY = 0,
+	MONDAY = 1,
+	TUESDAY = 2,
+	WEDNESDAY = 3,
+	THURSDAY = 4,
+	FRIDAY = 5,
+	SATURDAY = 6,
+}
+export class Holliday {
+	name: string;
+	weekday: Weekday;
+
+    constructor(source: any) {
+        this.name = source["name"];
+        this.weekday = source["weekday"];
+    }
+
 }`
 	testConverter(t, converter, desiredResult)
 }

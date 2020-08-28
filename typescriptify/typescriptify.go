@@ -18,13 +18,14 @@ const (
 )
 
 type TypeScriptify struct {
-	Prefix           string
-	Suffix           string
-	Indent           string
-	CreateFromMethod bool
-	BackupDir        string // If empty no backup
-	DontExport       bool
-	CreateInterface  bool
+	Prefix            string
+	Suffix            string
+	Indent            string
+	CreateFromMethod  bool
+	CreateConstructor bool
+	BackupDir         string // If empty no backup
+	DontExport        bool
+	CreateInterface   bool
 
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
@@ -94,15 +95,37 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
-func (t *TypeScriptify) Add(obj interface{}) {
+func (t *TypeScriptify) WithCreateFromMethod(b bool) *TypeScriptify {
+	t.CreateFromMethod = b
+	return t
+}
+
+func (t *TypeScriptify) WithConstructor(b bool) *TypeScriptify {
+	t.CreateConstructor = b
+	return t
+}
+
+func (t *TypeScriptify) WithIndent(i string) *TypeScriptify {
+	t.Indent = i
+	return t
+}
+
+func (t *TypeScriptify) WithBackupDir(b string) *TypeScriptify {
+	t.BackupDir = b
+	return t
+}
+
+func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 	t.AddType(reflect.TypeOf(obj))
+	return t
 }
 
-func (t *TypeScriptify) AddType(typeOf reflect.Type) {
+func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
 	t.golangTypes = append(t.golangTypes, typeOf)
+	return t
 }
 
-func (t *TypeScriptify) AddEnum(values interface{}) {
+func (t *TypeScriptify) AddEnum(values interface{}) *TypeScriptify {
 	if t.enumValues == nil {
 		t.enumValues = map[reflect.Type][]interface{}{}
 	}
@@ -122,11 +145,14 @@ func (t *TypeScriptify) AddEnum(values interface{}) {
 	}
 
 	t.enumTypes = append(t.enumTypes, ty)
+
+	return t
 }
 
 // AddEnumValues is deprecated, use `AddEnum()`
-func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) {
+func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) *TypeScriptify {
 	t.AddEnum(values)
+	return t
 }
 
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
@@ -374,14 +400,21 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		}
 	}
 
-	result += builder.fields
-	if !t.CreateInterface && t.CreateFromMethod {
-		result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
-		result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
-		result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
-		result += builder.createFromMethodBody
-		result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
-		result += fmt.Sprintf("%s}\n\n", t.Indent)
+	result += strings.Join(builder.fields, "\n") + "\n"
+	if !t.CreateInterface {
+		if t.CreateFromMethod {
+			result += fmt.Sprintf("\n%sstatic createFrom(source: any) {\n", t.Indent)
+			result += fmt.Sprintf("%s%sif ('string' === typeof source) source = JSON.parse(source);\n", t.Indent, t.Indent)
+			result += fmt.Sprintf("%s%sconst result = new %s();\n", t.Indent, t.Indent, entityName)
+			result += strings.Join(builder.createFromMethodBody, "\n") + "\n"
+			result += fmt.Sprintf("%s%sreturn result;\n", t.Indent, t.Indent)
+			result += fmt.Sprintf("%s}\n\n", t.Indent)
+		}
+		if t.CreateConstructor {
+			result += fmt.Sprintf("\n%sconstructor(source: any) {\n", t.Indent)
+			result += strings.Join(builder.constructorBody, "\n") + "\n"
+			result += fmt.Sprintf("%s}\n\n", t.Indent)
+		}
 	}
 
 	if customCode != nil {
@@ -399,8 +432,9 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 type typeScriptClassBuilder struct {
 	types                map[reflect.Kind]string
 	indent               string
-	fields               string
-	createFromMethodBody string
+	fields               []string
+	createFromMethodBody []string
+	constructorBody      []string
 	prefix, suffix       string
 }
 
@@ -412,12 +446,12 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 		customTSType := field.Tag.Get(tsType)
 		if len(customTSType) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, customTSType)
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
+			t.addField(fieldName, customTSType)
+			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 			return nil
 		} else if len(typeScriptType) > 0 {
-			t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, typeScriptType, strings.Repeat("[]", arrayDepth))
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
+			t.addField(fieldName, fmt.Sprint(typeScriptType, strings.Repeat("[]", arrayDepth)))
+			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 			return nil
 		}
 	}
@@ -438,13 +472,13 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
-		t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, typeScriptType)
+		t.addField(fieldName, typeScriptType)
 		if customTransformation == "" {
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"];\n", t.indent, t.indent, strippedFieldName, strippedFieldName)
+			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 		} else {
 			val := fmt.Sprintf(`source["%s"]`, strippedFieldName)
 			expression := strings.Replace(customTransformation, "__VALUE__", val, -1)
-			t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = %s;\n", t.indent, t.indent, strippedFieldName, expression)
+			t.addInitializerFieldLine(strippedFieldName, expression)
 		}
 		return nil
 	}
@@ -454,19 +488,30 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 
 func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Name()
-	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
+	t.addField(fieldName, t.prefix+fieldType+t.suffix)
+	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 }
 
 func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.StructField) {
 	fieldType := field.Type.Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
-	t.fields += fmt.Sprintf("%s%s: %s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix)
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = %s.createFrom(source[\"%s\"]);\n", t.indent, t.indent, strippedFieldName, t.prefix+fieldType+t.suffix, strippedFieldName)
+	t.addField(fieldName, t.prefix+fieldType+t.suffix)
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("%s.createFrom(source[\"%s\"])", t.prefix+fieldType+t.suffix, strippedFieldName))
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
-	t.fields += fmt.Sprintf("%s%s: %s%s;\n", t.indent, fieldName, t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth))
-	t.createFromMethodBody += fmt.Sprintf("%s%sresult.%s = source[\"%s\"] && source[\"%s\"].map(function(element: any) { return %s.createFrom(element); });\n", t.indent, t.indent, strippedFieldName, strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix)
+	t.addField(fieldName, fmt.Sprint(t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth)))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] && source[\"%s\"].map(function(element: any) { return %s.createFrom(element); })", strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix))
+}
+
+func (t *typeScriptClassBuilder) addInitializerFieldLine(fld, initializer string) {
+	t.createFromMethodBody = append(t.createFromMethodBody, fmt.Sprint(t.indent, t.indent, "result.", fld, " = ", initializer, ";"))
+	t.constructorBody = append(t.constructorBody, fmt.Sprint(t.indent, t.indent, "this.", fld, " = ", initializer, ";"))
+}
+
+func (t *typeScriptClassBuilder) addField(fld, fldType string) {
+	t.fields = append(t.fields, fmt.Sprint(t.indent, fld, ": ", fldType, ";"))
 }
