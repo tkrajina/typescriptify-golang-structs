@@ -472,11 +472,11 @@ func (w Weekday) TSName() string {
 		return "SATURDAY"
 	default:
 		return "???"
-
 	}
 }
 
-var AllWeekdays = []Weekday{
+// One way to specify enums is to list all values and then every one must have a TSName() method
+var allWeekdaysV1 = []Weekday{
 	Sunday,
 	Monday,
 	Tuesday,
@@ -486,20 +486,35 @@ var AllWeekdays = []Weekday{
 	Saturday,
 }
 
+// Another way to specify enums:
+var allWeekdaysV2 = []struct {
+	Value  Weekday
+	TSName string
+}{
+	{Sunday, "SUNDAY"},
+	{Monday, "MONDAY"},
+	{Tuesday, "TUESDAY"},
+	{Wednesday, "WEDNESDAY"},
+	{Thursday, "THURSDAY"},
+	{Friday, "FRIDAY"},
+	{Saturday, "SATURDAY"},
+}
+
 type Holliday struct {
 	Name    string  `json:"name"`
 	Weekday Weekday `json:"weekday"`
 }
 
 func TestEnum(t *testing.T) {
-	converter := New().
-		AddType(reflect.TypeOf(Holliday{})).
-		AddEnum(AllWeekdays).
-		WithConstructor(false).
-		WithCreateFromMethod(true).
-		WithBackupDir("")
+	for _, allWeekdays := range []interface{}{allWeekdaysV1, allWeekdaysV2} {
+		converter := New().
+			AddType(reflect.TypeOf(Holliday{})).
+			AddEnum(allWeekdays).
+			WithConstructor(false).
+			WithCreateFromMethod(true).
+			WithBackupDir("")
 
-	desiredResult := `export enum Weekday {
+		desiredResult := `export enum Weekday {
 	SUNDAY = 0,
 	MONDAY = 1,
 	TUESDAY = 2,
@@ -522,43 +537,45 @@ export class Holliday {
         this.weekday = source["weekday"];
     }
 }`
-	testConverter(t, converter, desiredResult)
+		testConverter(t, converter, desiredResult)
+	}
 }
 
-func TestConstructor(t *testing.T) {
+type Gender string
+
+const (
+	MaleStr   Gender = "m"
+	FemaleStr Gender = "f"
+)
+
+var allGenders = []struct {
+	Value  Gender
+	TSName string
+}{
+	{MaleStr, "MALE"},
+	{FemaleStr, "FEMALE"},
+}
+
+func TestEnumWithStringValues(t *testing.T) {
 	converter := New().
-		AddType(reflect.TypeOf(Holliday{})).
-		AddEnum(AllWeekdays).
-		WithConstructor(true).
+		AddEnum(allGenders).
+		WithConstructor(false).
 		WithCreateFromMethod(false).
 		WithBackupDir("")
 
-	desiredResult := `export enum Weekday {
-	SUNDAY = 0,
-	MONDAY = 1,
-	TUESDAY = 2,
-	WEDNESDAY = 3,
-	THURSDAY = 4,
-	FRIDAY = 5,
-	SATURDAY = 6,
+	desiredResult := `
+export enum Gender {
+	MALE = "m",
+	FEMALE = "f",
 }
-export class Holliday {
-	name: string;
-	weekday: Weekday;
-
-    constructor(source: any = {}) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        this.name = source["name"];
-        this.weekday = source["weekday"];
-    }
-}`
+`
 	testConverter(t, converter, desiredResult)
 }
 
 func TestConstructorWithReferences(t *testing.T) {
 	converter := New().
 		AddType(reflect.TypeOf(Person{})).
-		AddEnum(AllWeekdays).
+		AddEnum(allWeekdaysV2).
 		WithConstructor(true).
 		WithCreateFromMethod(false).
 		WithBackupDir("")

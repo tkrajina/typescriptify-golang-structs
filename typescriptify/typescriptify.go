@@ -1,7 +1,6 @@
 package typescriptify
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,12 +9,19 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/tkrajina/go-reflector/reflector"
 )
 
 const (
 	tsTransformTag = "ts_transform"
 	tsType         = "ts_type"
 )
+
+type enumElement struct {
+	value interface{}
+	name  string
+}
 
 type TypeScriptify struct {
 	Prefix            string
@@ -29,7 +35,7 @@ type TypeScriptify struct {
 
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
-	enumValues  map[reflect.Type][]interface{}
+	enums       map[reflect.Type][]enumElement
 	types       map[reflect.Kind]string
 
 	// throwaway, used when converting
@@ -136,24 +142,44 @@ func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
 }
 
 func (t *TypeScriptify) AddEnum(values interface{}) *TypeScriptify {
-	if t.enumValues == nil {
-		t.enumValues = map[reflect.Type][]interface{}{}
+	if t.enums == nil {
+		t.enums = map[reflect.Type][]enumElement{}
 	}
-
 	items := reflect.ValueOf(values)
 	if items.Kind() != reflect.Slice {
 		panic(fmt.Sprintf("Values for %T isn't a slice", values))
 	}
 
-	var ty reflect.Type
+	var elements []enumElement
 	for i := 0; i < items.Len(); i++ {
 		item := items.Index(i)
-		if i == 0 {
-			ty = item.Type()
-		}
-		t.enumValues[ty] = append(t.enumValues[ty], item.Interface())
-	}
 
+		var el enumElement
+		if item.Kind() == reflect.Struct {
+			r := reflector.New(item.Interface())
+			val, err := r.Field("Value").Get()
+			if err != nil {
+				panic(fmt.Sprint("missing Type field in ", item.Type().String()))
+			}
+			name, err := r.Field("TSName").Get()
+			if err != nil {
+				panic(fmt.Sprint("missing TSName field in ", item.Type().String()))
+			}
+			el.value = val
+			el.name = name.(string)
+		} else {
+			el.value = item.Interface()
+			if tsNamer, is := item.Interface().(TSNamer); is {
+				el.name = tsNamer.TSName()
+			} else {
+				panic(fmt.Sprint(item.Type().String(), " has no TSName method"))
+			}
+		}
+
+		elements = append(elements, el)
+	}
+	ty := reflect.TypeOf(elements[0].value)
+	t.enums[ty] = elements
 	t.enumTypes = append(t.enumTypes, ty)
 
 	return t
@@ -170,8 +196,8 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 
 	result := ""
 	for _, typeof := range t.enumTypes {
-
-		typeScriptCode, err := t.convertEnum(typeof, t.enumValues[typeof])
+		elements := t.enums[typeof]
+		typeScriptCode, err := t.convertEnum(typeof, elements)
 		if err != nil {
 			return "", err
 		}
@@ -286,7 +312,7 @@ type TSNamer interface {
 	TSName() string
 }
 
-func (t *TypeScriptify) convertEnum(typeOf reflect.Type, values []interface{}) (string, error) {
+func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement) (string, error) {
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
@@ -295,15 +321,8 @@ func (t *TypeScriptify) convertEnum(typeOf reflect.Type, values []interface{}) (
 	entityName := t.Prefix + typeOf.Name() + t.Suffix
 	result := "enum " + entityName + " {\n"
 
-	for _, val := range values {
-		byts, _ := json.Marshal(val)
-		name := fmt.Sprintf("VALUE_%s", string(byts))
-		if withName, is := val.(TSNamer); is {
-			name = withName.TSName()
-		} else if s, is := val.(fmt.Stringer); is {
-			name = strings.ToUpper(s.String())
-		}
-		result += fmt.Sprintf("%s%s = %s,\n", t.Indent, name, string(byts))
+	for _, val := range elements {
+		result += fmt.Sprintf("%s%s = %#v,\n", t.Indent, val.name, val.value)
 	}
 
 	result += "}"
@@ -365,7 +384,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			customTSType := field.Tag.Get(tsType)
 			if customTransformation != "" {
 				err = builder.AddSimpleField(jsonFieldName, field)
-			} else if _, isEnum := t.enumValues[field.Type]; isEnum {
+			} else if _, isEnum := t.enums[field.Type]; isEnum {
 				builder.AddEnumField(jsonFieldName, field)
 			} else if customTSType != "" { // Struct:
 				err = builder.AddSimpleField(jsonFieldName, field)
