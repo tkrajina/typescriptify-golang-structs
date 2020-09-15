@@ -31,9 +31,9 @@ tscriptify -package=package/with/your/models -target=target_ts_file.ts path/to/f
 Or by using it from your code:
 
 ```golang
-converter := typescriptify.New()
-converter.Add(Person{})
-converter.Add(Dummy{})
+converter := typescriptify.New().
+    Add(Person{}).
+    Add(Dummy{})
 err := converter.ConvertToFile("ts/models.ts")
 if err != nil {
     panic(err.Error())
@@ -127,30 +127,34 @@ class Address {
 The lines between `//[Address:]` and `//[end]` will be left intact after `ConvertToFile()`.
 
 If your custom code contain methods, then just casting yout object to the target class (with `<Person> {...}`) won't work because the casted object won't contain your methods.
-In that case, you can configure the converter to create static `createFrom` methods:
+In that case use the constructor:
 
 ```golang
-converter := typescriptify.New()
-converter.CreateFromMethod = true
-converter.Indent = "    "
+converter := typescriptify.New().
+    WithConstructor(true)
 ```
 
 The TypeScript code will now be:
 
 ```typescript
-class Person {
+export class Person {
     name: string;
-    personal_info: PersonalInfo;
     nicknames: string[];
     addresses: Address[];
+    address: Address;
+    metadata: {[key:string]:string};
+    friends: Person[];
+    a: Dummy;
 
-    static createFrom(source: any) {
-        var result = new Person();
-        result.name = source["name"];
-        result.personal_info = source["personal_info"] ? PersonalInfo.createFrom(source["personal_info"]) : null;
-        result.nicknames = source["nicknames"];
-        result.addresses = source["addresses"] ? source["addresses"].map(function(element) { return Address.createFrom(element); }) : null;
-        return result;
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.name = source["name"];
+        this.nicknames = source["nicknames"];
+        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new Address(element));
+        this.address = source["address"] && new Address(source["address"]);
+        this.metadata = source["metadata"];
+        this.friends = source["friends"] && source["friends"].map((element: any) => new Person(element));
+        this.a = source["a"] && new Dummy(source["a"]);
     }
 
     //[Person:]
@@ -166,15 +170,15 @@ class Person {
 And now, instead of casting to `Person` you need to:
 
 ```typescript
-var person = Person.createFrom({"name":"Me myself","nicknames":["aaa", "bbb"]});
+var person = new Person({"name":"Me myself","nicknames":["aaa", "bbb"]});
 ```
 
 If you use golang JSON structs as responses from your API, you may want to have a common prefix for all the generated models:
 
 ```golang
-converter := typescriptify.New()
-converter.Prefix("API_")
-converter.Add(Person{})
+converter := typescriptify.New().
+    WithPrefix("API_").
+    Add(Person{})
 ```
 
 The model name will be `API_Person` instead of `Person`.
@@ -189,7 +193,7 @@ type Data struct {
 }
 ```
 
-...results with...
+...will create:
 
 ```typescript
 export class Data {
@@ -209,22 +213,25 @@ type Data struct {
 Generated typescript:
 
 ```typescript
-export class Data {
-    time: Date;
+export class Date {
+	time: Date;
 
-    static createFrom(source: any) {
-        var result = new TestCustomType();
-        result.time = new Date(source["time"]);
-        return result;
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.time = new Date(source["time"]);
     }
 }
 ```
 
-In this case, you should always use `Data.createFrom(json)` instead of just casting `<Data>json`.
+In this case, you should always use `new Data(json)` instead of just casting `<Data>json`.
 
 ## Enums
 
-Enums can be converted to Typescript, but must have a `TSName() string` method defined. That method will specify the name of the Typescript enum constant:
+There are two ways to create enums. 
+
+### Enums with TSName()
+
+In this case you must provide a list of enum values and the enum type must have a `TSName() string` method
 
 ```golang
 type Weekday int
@@ -239,15 +246,7 @@ const (
 	Saturday
 )
 
-var AllWeekdays = []Weekday{
-	Sunday,
-	Monday,
-	Tuesday,
-	Wednesday,
-	Thursday,
-	Friday,
-	Saturday,
-}
+var AllWeekdays = []Weekday{ Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, }
 
 func (w Weekday) TSName() string {
 	switch w {
@@ -271,11 +270,28 @@ func (w Weekday) TSName() string {
 }
 ```
 
-Then, when converting models `AddEnumValues()` to specify the enum:
+If this is too verbose for you, you can also provide a list of enums and enum names:
 
 ```golang
-	converter := New()
-	converter.AddEnumValues(reflect.TypeOf(Weekday(Sunday)), AllWeekdays)
+var AllWeekdays = []struct {
+	Value  Weekday
+	TSName string
+}{
+	{Sunday, "SUNDAY"},
+	{Monday, "MONDAY"},
+	{Tuesday, "TUESDAY"},
+	{Wednesday, "WEDNESDAY"},
+	{Thursday, "THURSDAY"},
+	{Friday, "FRIDAY"},
+	{Saturday, "SATURDAY"},
+}
+```
+
+Then, when converting models `AddEnum()` to specify the enum:
+
+```golang
+    converter := New().
+        AddEnum(AllWeekdays)
 ```
 
 The resulting code will be:
