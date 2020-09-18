@@ -243,7 +243,7 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 		// Put in the custom imports, i.e.: `import Decimal from 'decimal.js'`
 		// TODO: Check for repeating custom imports
 		for _, cimport := range t.CustomImports {
-			f.WriteString(cimport)
+			f.WriteString(cimport + "\n")
 		}
 
 		f.WriteString("\n\n")
