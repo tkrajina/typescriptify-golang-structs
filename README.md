@@ -173,7 +173,7 @@ If you use golang JSON structs as responses from your API, you may want to have 
 
 ```golang
 converter := typescriptify.New()
-converter.Prefix("API_")
+converter.Prefix = "API_"
 converter.Add(Person{})
 ```
 
@@ -221,6 +221,15 @@ export class Data {
 ```
 
 In this case, you should always use `Data.createFrom(json)` instead of just casting `<Data>json`.
+
+If you use a custom type that has to be imported, you can do the following:
+
+```golang
+converter := typescriptify.New()
+converter.CustomImports = append(converter.CustomImports, "import Decimal from 'decimal.js'")
+```
+
+This will put your import on top of the generated file.
 
 ## Enums
 
