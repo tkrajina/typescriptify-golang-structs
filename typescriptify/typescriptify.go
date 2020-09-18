@@ -246,7 +246,7 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 			f.WriteString(cimport + "\n")
 		}
 
-		f.WriteString("\n\n")
+		f.WriteString("\n")
 	}
 	f.WriteString(converted)
 	if err != nil {
