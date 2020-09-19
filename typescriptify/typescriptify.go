@@ -134,6 +134,13 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 	t.alreadyConverted = make(map[reflect.Type]bool)
 
 	result := ""
+	if len(t.customImports) > 0 {
+		// Put the custom imports, i.e.: `import Decimal from 'decimal.js'`
+		for _, cimport := range t.customImports {
+			result += cimport + "\n"
+		}
+	}
+
 	for _, typeof := range t.enumTypes {
 
 		typeScriptCode, err := t.convertEnum(typeof, t.enumValues[typeof])
@@ -239,15 +246,7 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 	}
 
 	f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n")
-	if len(t.customImports) > 0 {
-		// Put in the custom imports, i.e.: `import Decimal from 'decimal.js'`
-		// TODO: Check for repeating custom imports
-		for _, cimport := range t.customImports {
-			f.WriteString(cimport + "\n")
-		}
 
-		f.WriteString("\n")
-	}
 	f.WriteString(converted)
 	if err != nil {
 		return err
