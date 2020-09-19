@@ -25,7 +25,7 @@ type TypeScriptify struct {
 	BackupDir        string // If empty no backup
 	DontExport       bool
 	CreateInterface  bool
-	CustomImports    []string
+	customImports    []string
 
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
@@ -239,10 +239,10 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 	}
 
 	f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n")
-	if len(t.CustomImports) > 0 {
+	if len(t.customImports) > 0 {
 		// Put in the custom imports, i.e.: `import Decimal from 'decimal.js'`
 		// TODO: Check for repeating custom imports
-		for _, cimport := range t.CustomImports {
+		for _, cimport := range t.customImports {
 			f.WriteString(cimport + "\n")
 		}
 
@@ -404,6 +404,16 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	result += "}"
 
 	return result, nil
+}
+
+func (t *TypeScriptify) AddImport(i string) {
+	for _, cimport := range t.customImports {
+		if cimport == i {
+			return
+		}
+	}
+
+	t.customImports = append(t.customImports, i)
 }
 
 type typeScriptClassBuilder struct {
