@@ -40,7 +40,7 @@ func main() {
 {{ end }}
 {{ range .Structs }}	t.Add({{ . }}{})
 {{ end }}
-{{ range .CustomImports }}	t.AddImport({{ . }})
+{{ range .CustomImports }}	t.AddImport("{{ . }}")
 {{ end }}
 	err := t.ConvertToFile("{{ .TargetFile }}")
 	if err != nil {
