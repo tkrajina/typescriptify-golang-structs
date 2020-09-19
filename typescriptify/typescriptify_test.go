@@ -629,3 +629,29 @@ export class Person {
 }`
 	testConverter(t, converter, desiredResult)
 }
+
+type WithMap struct {
+	Map map[string]int `json:"simpleMap"`
+}
+
+func TestMaps(t *testing.T) {
+	converter := New().
+		AddType(reflect.TypeOf(WithMap{})).
+		WithConstructor(true).
+		WithCreateFromMethod(false).
+		WithBackupDir("")
+
+	desiredResult := `
+export class WithMap {
+	simpleMap: {[key: string]: number};
+
+
+	constructor(source: any = {}) {
+		if ('string' === typeof source) source = JSON.parse(source);
+		this.simpleMap = source["simpleMap"] ? source["simpleMap"] : null;
+
+	}
+}
+`
+	testConverter(t, converter, desiredResult)
+}
