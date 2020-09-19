@@ -14,6 +14,17 @@ import (
 	"time"
 )
 
+type arrayImports []string
+
+func (i *arrayImports) String() string {
+	return "// custom imports:\n\n" + strings.Join(*i, "\n")
+}
+
+func (i *arrayImports) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 const TEMPLATE = `package main
 
 import (
@@ -29,6 +40,8 @@ func main() {
 {{ end }}
 {{ range .Structs }}	t.Add({{ . }}{})
 {{ end }}
+{{ range .CustomImports }}	t.AddImport({{ . }})
+{{ end }}
 	err := t.ConvertToFile("{{ .TargetFile }}")
 	if err != nil {
 		panic(err.Error())
@@ -41,13 +54,16 @@ type Params struct {
 	TargetFile    string
 	Structs       []string
 	InitParams    map[string]interface{}
+	CustomImports arrayImports
 }
 
 func main() {
 	var packagePath, target, backupDir string
+	var customImports arrayImports
 	flag.StringVar(&packagePath, "package", "", "Path of the package with models")
 	flag.StringVar(&target, "target", "", "Target typescript file")
 	flag.StringVar(&backupDir, "backup", "", "Directory where backup files are saved")
+	flag.Var(&customImports, "import", "Typescript import for your custom type, repeat this option for each import needed")
 	flag.Parse()
 
 	structs := []string{}
@@ -104,6 +120,7 @@ func main() {
 		InitParams: map[string]interface{}{
 			"BackupDir": fmt.Sprintf(`"%s"`, backupDir),
 		},
+		CustomImports: customImports,
 	}
 	err = t.Execute(f, p)
 	handleErr(err)

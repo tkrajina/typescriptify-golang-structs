@@ -22,6 +22,12 @@ Use the command line tool:
 tscriptify -package=package/with/your/models -target=target_ts_file.ts Model1 Model2
 ```
 
+If you need to import a custom type in Typescript, you can pass the import string:
+
+```
+tscriptify -package=package/with/your/models -target=target_ts_file.ts -import="import { Decimal } from 'decimal.js'" Model1 Model2
+```
+
 If all your structs are in one file, you can convert them with:
 
 ```
