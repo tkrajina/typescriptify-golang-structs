@@ -304,7 +304,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 
 	fields := deepFields(typeOf)
 	for _, field := range fields {
-		if field.Type.Kind() == reflect.Ptr {
+		isPtr := field.Type.Kind() == reflect.Ptr
+		if isPtr {
 			field.Type = field.Type.Elem()
 		}
 		jsonTag := field.Tag.Get("json")
@@ -314,13 +315,18 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			if len(jsonTagParts) > 0 {
 				jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
 			}
+			hasOmitEmpty := false
 			for _, t := range jsonTagParts {
 				if t == "" {
 					break
 				}
 				if t == "omitempty" {
-					jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
+					hasOmitEmpty = true
+					break
 				}
+			}
+			if isPtr || hasOmitEmpty {
+				jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
 			}
 		}
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
