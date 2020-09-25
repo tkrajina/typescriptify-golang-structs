@@ -62,6 +62,36 @@ export class Person {
 	testConverter(t, converter, desiredResult)
 }
 
+func TestTypescriptifyWithCustomImports(t *testing.T) {
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Person{}))
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+	converter.AddImport("import { Decimal } from 'decimal.js'")
+
+	desiredResult := `
+import { Decimal } from 'decimal.js'
+
+export class Dummy {
+        something: string;
+}
+export class Address {
+        duration: number;
+        text?: string;
+}
+export class Person {
+        name: string;
+        nicknames: string[];
+		addresses: Address[];
+		address: Address;
+		metadata: {[key:string]:string};
+		friends: Person[];
+        a: Dummy;
+}`
+	testConverter(t, converter, desiredResult)
+}
+
 func TestTypescriptifyWithInstances(t *testing.T) {
 	converter := New()
 

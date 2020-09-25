@@ -22,6 +22,12 @@ Use the command line tool:
 tscriptify -package=package/with/your/models -target=target_ts_file.ts Model1 Model2
 ```
 
+If you need to import a custom type in Typescript, you can pass the import string:
+
+```
+tscriptify -package=package/with/your/models -target=target_ts_file.ts -import="import { Decimal } from 'decimal.js'" Model1 Model2
+```
+
 If all your structs are in one file, you can convert them with:
 
 ```
@@ -173,7 +179,7 @@ If you use golang JSON structs as responses from your API, you may want to have 
 
 ```golang
 converter := typescriptify.New()
-converter.Prefix("API_")
+converter.Prefix = "API_"
 converter.Add(Person{})
 ```
 
@@ -221,6 +227,15 @@ export class Data {
 ```
 
 In this case, you should always use `Data.createFrom(json)` instead of just casting `<Data>json`.
+
+If you use a custom type that has to be imported, you can do the following:
+
+```golang
+converter := typescriptify.New()
+converter.AddImport("import Decimal from 'decimal.js'")
+```
+
+This will put your import on top of the generated file.
 
 ## Enums
 
