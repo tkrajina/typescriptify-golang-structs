@@ -84,7 +84,7 @@ export class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
