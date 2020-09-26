@@ -661,7 +661,9 @@ export class Person {
 }
 
 type WithMap struct {
-	Map map[string]int `json:"simpleMap"`
+	Map        map[string]int      `json:"simpleMap"`
+	MapObjects map[string]Address  `json:"mapObjects"`
+	PtrMap     *map[string]Address `json:"ptrMapObjects"`
 }
 
 func TestMaps(t *testing.T) {
@@ -672,16 +674,32 @@ func TestMaps(t *testing.T) {
 		WithBackupDir("")
 
 	desiredResult := `
-export class WithMap {
-	simpleMap: {[key: string]: number};
+      export class Address {
+          duration: number;
+          text?: string;
+      
+          constructor(source: any = {}) {
+              if ('string' === typeof source) source = JSON.parse(source);
+              this.duration = source["duration"];
+              this.text = source["text"];
+          }
+      }
+      export class WithMap {
+          simpleMap: {[key: string]: number};
+      
+          mapObjects: {[key: string]: Address};
+
+          ptrMapObjects?: {[key: string]: Address};
 
 
-	constructor(source: any = {}) {
-		if ('string' === typeof source) source = JSON.parse(source);
-		this.simpleMap = source["simpleMap"] ? source["simpleMap"] : null;
+          constructor(source: any = {}) {
+              if ('string' === typeof source) source = JSON.parse(source);
+              this.simpleMap = source["simpleMap"] ? source["simpleMap"] : null;
+              this.mapObjects = source["mapObjects"] ? source["mapObjects"] : null;
+              this.ptrMapObjects = source["ptrMapObjects"] ? source["ptrMapObjects"] : null;
 
-	}
-}
+          }
+      }
 `
 	testConverter(t, converter, desiredResult)
 }
