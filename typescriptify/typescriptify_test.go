@@ -54,7 +54,37 @@ export class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address?: Address;
+		metadata: {[key:string]:string};
+		friends: Person[];
+        a: Dummy;
+}`
+	testConverter(t, converter, desiredResult)
+}
+
+func TestTypescriptifyWithCustomImports(t *testing.T) {
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Person{}))
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+	converter.AddImport("import { Decimal } from 'decimal.js'")
+
+	desiredResult := `
+import { Decimal } from 'decimal.js'
+
+export class Dummy {
+        something: string;
+}
+export class Address {
+        duration: number;
+        text?: string;
+}
+export class Person {
+        name: string;
+        nicknames: string[];
+		addresses: Address[];
+		address?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -82,7 +112,7 @@ class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -111,7 +141,7 @@ interface Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -138,7 +168,7 @@ export class Person {
         name: string;
 		nicknames: string[];
 		addresses: Address[];
-		address: Address;
+		address?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -188,7 +218,7 @@ class test_Person_test {
     name: string;
     nicknames: string[];
     addresses: test_Address_test[];
-    address: test_Address_test;
+    address?: test_Address_test;
     metadata: {[key:string]:string};
     friends: test_Person_test[];
 	a: test_Dummy_test;
@@ -611,7 +641,7 @@ export class Person {
     name: string;
     nicknames: string[];
     addresses: Address[];
-    address: Address;
+    address?: Address;
     metadata: {[key:string]:string};
     friends: Person[];
     a: Dummy;
@@ -653,5 +683,21 @@ export class WithMap {
 	}
 }
 `
+	testConverter(t, converter, desiredResult)
+}
+
+func TestPTR(t *testing.T) {
+	type Person struct {
+		Name *string `json:"name"`
+	}
+
+	converter := New()
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+	converter.Add(Person{})
+
+	desiredResult := `export class Person {
+    name?: string;
+}`
 	testConverter(t, converter, desiredResult)
 }

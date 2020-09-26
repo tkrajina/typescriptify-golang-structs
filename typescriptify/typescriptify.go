@@ -32,6 +32,7 @@ type TypeScriptify struct {
 	BackupDir         string // If empty no backup
 	DontExport        bool
 	CreateInterface   bool
+	customImports    []string
 
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
@@ -216,6 +217,13 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 	t.alreadyConverted = make(map[reflect.Type]bool)
 
 	result := ""
+	if len(t.customImports) > 0 {
+		// Put the custom imports, i.e.: `import Decimal from 'decimal.js'`
+		for _, cimport := range t.customImports {
+			result += cimport + "\n"
+		}
+	}
+
 	for _, typeof := range t.enumTypes {
 		elements := t.enums[typeof]
 		typeScriptCode, err := t.convertEnum(typeof, elements)
@@ -321,6 +329,7 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 	}
 
 	f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n")
+
 	f.WriteString(converted)
 	if err != nil {
 		return err
@@ -380,7 +389,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 
 	fields := deepFields(typeOf)
 	for _, field := range fields {
-		if field.Type.Kind() == reflect.Ptr {
+		isPtr := field.Type.Kind() == reflect.Ptr
+		if isPtr {
 			field.Type = field.Type.Elem()
 		}
 		jsonTag := field.Tag.Get("json")
@@ -390,13 +400,18 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			if len(jsonTagParts) > 0 {
 				jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
 			}
+			hasOmitEmpty := false
 			for _, t := range jsonTagParts {
 				if t == "" {
 					break
 				}
 				if t == "omitempty" {
-					jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
+					hasOmitEmpty = true
+					break
 				}
+			}
+			if isPtr || hasOmitEmpty {
+				jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
 			}
 		}
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
@@ -517,6 +532,16 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	result += "}"
 
 	return result, nil
+}
+
+func (t *TypeScriptify) AddImport(i string) {
+	for _, cimport := range t.customImports {
+		if cimport == i {
+			return
+		}
+	}
+
+	t.customImports = append(t.customImports, i)
 }
 
 type typeScriptClassBuilder struct {
