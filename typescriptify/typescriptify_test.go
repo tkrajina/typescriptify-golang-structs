@@ -686,17 +686,16 @@ func TestMaps(t *testing.T) {
       }
       export class WithMap {
           simpleMap: {[key: string]: number};
-      
           mapObjects: {[key: string]: Address};
-
           ptrMapObjects?: {[key: string]: Address};
-
 
           constructor(source: any = {}) {
               if ('string' === typeof source) source = JSON.parse(source);
               this.simpleMap = source["simpleMap"] ? source["simpleMap"] : null;
-              this.mapObjects = source["mapObjects"] ? source["mapObjects"] : null;
-              this.ptrMapObjects = source["ptrMapObjects"] ? source["ptrMapObjects"] : null;
+			  this.mapObjects = source["mapObjects"] ? source["mapObjects"] : null;
+			  if (this.mapObjects) for(const key of Object.keys(this.mapObjects)) { this.mapObjects[key] = new Address(this.mapObjects[key]) }
+			  this.ptrMapObjects = source["ptrMapObjects"] ? source["ptrMapObjects"] : null;
+			  if (this.ptrMapObjects) for(const key of Object.keys(this.ptrMapObjects)) { this.ptrMapObjects[key] = new Address(this.ptrMapObjects[key]) }
           }
       }
 `

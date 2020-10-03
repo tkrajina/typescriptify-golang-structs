@@ -157,10 +157,13 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	}
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 
-	t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};\n", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName))
+	t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName))
 	t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"] : null;",
 		t.indent, t.indent, strippedFieldName,
 		strippedFieldName, strippedFieldName))
+	if valueType.Kind() == reflect.Struct {
+		t.constructorBody = append(t.constructorBody, fmt.Sprint(t.indent, t.indent, "if (this.", strippedFieldName, ") for(const key of Object.keys(this.", strippedFieldName, ")) { this.", strippedFieldName, "[key] = new Address(this.", strippedFieldName, "[key]) }"))
+	}
 }
 
 func (t *TypeScriptify) AddEnum(values interface{}) *TypeScriptify {
