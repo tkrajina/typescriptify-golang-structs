@@ -3,10 +3,15 @@ package typescriptify
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type Address struct {
@@ -279,6 +284,27 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string)
 			}
 		}
 	}
+}
+
+func testTypescriptExpression(t *testing.T, baseScript, tsExpression, desiredExpressionResult string) {
+	f, err := ioutil.TempFile(os.TempDir(), "*.ts")
+	assert.Nil(t, err)
+	assert.NotNil(t, f)
+
+	f.WriteString(baseScript)
+	f.WriteString("\n")
+	f.WriteString(`console.log(` + tsExpression + `)`)
+
+	fmt.Println("tmp ts: ", f.Name())
+	byts, err := exec.Command("tsc", f.Name()).CombinedOutput()
+	assert.Nil(t, err)
+
+	jsFile := strings.Replace(f.Name(), ".ts", ".js", 1)
+	fmt.Println("executing:", jsFile)
+	byts, err = exec.Command("node", jsFile).CombinedOutput()
+	assert.Nil(t, err)
+
+	assert.Equal(t, desiredExpressionResult, strings.TrimSpace(string(byts)))
 }
 
 func TestTypescriptifyCustomType(t *testing.T) {
@@ -700,6 +726,24 @@ func TestMaps(t *testing.T) {
       }
 `
 	testConverter(t, converter, desiredResult)
+
+	json := WithMap{
+		Map:        map[string]int{"aaa": 1},
+		MapObjects: map[string]Address{"bbb": {Duration: 1.0, Text1: "txt1"}},
+		PtrMap:     &map[string]Address{"ccc": {Duration: 2.0, Text1: "txt2"}},
+	}
+
+	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).simpleMap.aaa`, "1")
+
+	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb) instanceof Address`, "true")
+	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb) instanceof WithMap`, "false")
+	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb.duration`, "1")
+	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb.text`, "txt1")
+
+	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc) instanceof Address`, "true")
+	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc) instanceof WithMap`, "false")
+	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc.duration`, "2")
+	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc.text`, "txt2")
 }
 
 func TestPTR(t *testing.T) {
@@ -716,4 +760,12 @@ func TestPTR(t *testing.T) {
     name?: string;
 }`
 	testConverter(t, converter, desiredResult)
+}
+
+func jsonizeOrPanic(i interface{}) string {
+	byts, err := json.Marshal(i)
+	if err != nil {
+		panic(err)
+	}
+	return string(byts)
 }
