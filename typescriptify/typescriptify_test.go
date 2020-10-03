@@ -697,7 +697,6 @@ func TestMaps(t *testing.T) {
               this.simpleMap = source["simpleMap"] ? source["simpleMap"] : null;
               this.mapObjects = source["mapObjects"] ? source["mapObjects"] : null;
               this.ptrMapObjects = source["ptrMapObjects"] ? source["ptrMapObjects"] : null;
-
           }
       }
 `

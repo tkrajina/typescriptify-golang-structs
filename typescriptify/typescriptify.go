@@ -32,7 +32,7 @@ type TypeScriptify struct {
 	BackupDir         string // If empty no backup
 	DontExport        bool
 	CreateInterface   bool
-	customImports    []string
+	customImports     []string
 
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
@@ -158,7 +158,7 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 
 	t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};\n", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName))
-	t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"] : null;\n",
+	t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"] : null;",
 		t.indent, t.indent, strippedFieldName,
 		strippedFieldName, strippedFieldName))
 }
