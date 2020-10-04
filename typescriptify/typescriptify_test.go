@@ -42,6 +42,7 @@ type Person struct {
 }
 
 func TestTypescriptifyWithTypes(t *testing.T) {
+	t.Parallel()
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
@@ -68,6 +69,7 @@ export class Person {
 }
 
 func TestTypescriptifyWithCustomImports(t *testing.T) {
+	t.Parallel()
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
@@ -98,6 +100,7 @@ export class Person {
 }
 
 func TestTypescriptifyWithInstances(t *testing.T) {
+	t.Parallel()
 	converter := New()
 
 	converter.Add(Person{})
@@ -126,6 +129,7 @@ class Person {
 }
 
 func TestTypescriptifyWithInterfaces(t *testing.T) {
+	t.Parallel()
 	converter := New()
 
 	converter.Add(Person{})
@@ -155,6 +159,7 @@ interface Person {
 }
 
 func TestTypescriptifyWithDoubleClasses(t *testing.T) {
+	t.Parallel()
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
@@ -182,6 +187,7 @@ export class Person {
 }
 
 func TestWithPrefixes(t *testing.T) {
+	t.Parallel()
 	converter := New()
 
 	converter.Prefix = "test_"
@@ -308,6 +314,7 @@ func testTypescriptExpression(t *testing.T, baseScript, tsExpression, desiredExp
 }
 
 func TestTypescriptifyCustomType(t *testing.T) {
+	t.Parallel()
 	type TestCustomType struct {
 		Map map[string]int `json:"map" ts_type:"{[key: string]: number}"`
 	}
@@ -325,6 +332,7 @@ func TestTypescriptifyCustomType(t *testing.T) {
 }
 
 func TestDate(t *testing.T) {
+	t.Parallel()
 	type TestCustomType struct {
 		Time time.Time `json:"time" ts_type:"Date" ts_transform:"new Date(__VALUE__)"`
 	}
@@ -351,6 +359,7 @@ func TestDate(t *testing.T) {
 }
 
 func TestRecursive(t *testing.T) {
+	t.Parallel()
 	type Test struct {
 		Children []Test `json:"children"`
 	}
@@ -377,6 +386,7 @@ func TestRecursive(t *testing.T) {
 }
 
 func TestArrayOfArrays(t *testing.T) {
+	t.Parallel()
 	type Key struct {
 		Key string `json:"key"`
 	}
@@ -418,6 +428,7 @@ export class Keyboard {
 }
 
 func TestAny(t *testing.T) {
+	t.Parallel()
 	type Test struct {
 		Any interface{} `json:"field"`
 	}
@@ -450,6 +461,7 @@ func (t NumberTime) MarshalJSON() ([]byte, error) {
 }
 
 func TestTypeAlias(t *testing.T) {
+	t.Parallel()
 	type Person struct {
 		Birth NumberTime `json:"birth" ts_type:"number"`
 	}
@@ -474,6 +486,7 @@ func (MSTime) UnmarshalJSON([]byte) error   { return nil }
 func (MSTime) MarshalJSON() ([]byte, error) { return []byte("1111"), nil }
 
 func TestOverrideCustomType(t *testing.T) {
+	t.Parallel()
 
 	type SomeStruct struct {
 		Time MSTime `json:"time" ts_type:"number"`
@@ -562,6 +575,7 @@ type Holliday struct {
 }
 
 func TestEnum(t *testing.T) {
+	t.Parallel()
 	for _, allWeekdays := range []interface{}{allWeekdaysV1, allWeekdaysV2} {
 		converter := New().
 			AddType(reflect.TypeOf(Holliday{})).
@@ -613,6 +627,7 @@ var allGenders = []struct {
 }
 
 func TestEnumWithStringValues(t *testing.T) {
+	t.Parallel()
 	converter := New().
 		AddEnum(allGenders).
 		WithConstructor(false).
@@ -629,6 +644,7 @@ export enum Gender {
 }
 
 func TestConstructorWithReferences(t *testing.T) {
+	t.Parallel()
 	converter := New().
 		AddType(reflect.TypeOf(Person{})).
 		AddEnum(allWeekdaysV2).
@@ -693,6 +709,7 @@ type WithMap struct {
 }
 
 func TestMaps(t *testing.T) {
+	t.Parallel()
 	converter := New().
 		AddType(reflect.TypeOf(WithMap{})).
 		WithConstructor(true).
@@ -747,6 +764,7 @@ func TestMaps(t *testing.T) {
 }
 
 func TestPTR(t *testing.T) {
+	t.Parallel()
 	type Person struct {
 		Name *string `json:"name"`
 	}
@@ -759,6 +777,34 @@ func TestPTR(t *testing.T) {
 	desiredResult := `export class Person {
     name?: string;
 }`
+	testConverter(t, converter, desiredResult)
+}
+
+type PersonWithPtrName struct {
+	*HasName
+}
+
+func TestAnonymousPtr(t *testing.T) {
+	t.Parallel()
+	var p PersonWithPtrName
+	p.HasName = &HasName{}
+	p.Name = "JKLJKL"
+	converter := New().
+		AddType(reflect.TypeOf(PersonWithPtrName{})).
+		WithConstructor(true).
+		WithCreateFromMethod(false).
+		WithBackupDir("")
+
+	desiredResult := `
+      export class PersonWithPtrName {
+          name: string;
+      
+          constructor(source: any = {}) {
+              if ('string' === typeof source) source = JSON.parse(source);
+              this.name = source["name"];
+          }
+      }
+`
 	testConverter(t, converter, desiredResult)
 }
 

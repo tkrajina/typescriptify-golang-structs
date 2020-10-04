@@ -94,6 +94,9 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 		if f.Anonymous && kind == reflect.Struct {
 			//fmt.Println(v.Interface())
 			fields = append(fields, deepFields(f.Type)...)
+		} else if f.Anonymous && kind == reflect.Ptr && f.Type.Elem().Kind() == reflect.Struct {
+			//fmt.Println(v.Interface())
+			fields = append(fields, deepFields(f.Type.Elem())...)
 		} else {
 			fields = append(fields, f)
 		}
