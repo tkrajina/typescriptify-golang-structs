@@ -47,6 +47,7 @@ func TestTypescriptifyWithTypes(t *testing.T) {
 
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.CreateFromMethod = false
+	converter.CreateConstructor = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class Dummy {
@@ -76,6 +77,7 @@ func TestTypescriptifyWithCustomImports(t *testing.T) {
 	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 	converter.AddImport("//import { Decimal } from 'decimal.js'")
+	converter.CreateConstructor = false
 
 	desiredResult := `
 //import { Decimal } from 'decimal.js'
@@ -108,6 +110,7 @@ func TestTypescriptifyWithInstances(t *testing.T) {
 	converter.CreateFromMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
+	converter.CreateConstructor = false
 
 	desiredResult := `class Dummy {
         something: string;
@@ -165,6 +168,7 @@ func TestTypescriptifyWithDoubleClasses(t *testing.T) {
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.CreateFromMethod = false
+	converter.CreateConstructor = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class Dummy {
@@ -334,6 +338,7 @@ func TestTypescriptifyCustomType(t *testing.T) {
 	converter.AddType(reflect.TypeOf(TestCustomType{}))
 	converter.CreateFromMethod = false
 	converter.BackupDir = ""
+	converter.CreateConstructor = false
 
 	desiredResult := `export class TestCustomType {
         map: {[key: string]: number};
@@ -491,6 +496,7 @@ func TestTypeAlias(t *testing.T) {
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.CreateFromMethod = false
 	converter.BackupDir = ""
+	converter.CreateConstructor = false
 
 	desiredResult := `export class Person {
     birth: number;
@@ -519,6 +525,7 @@ func TestOverrideCustomType(t *testing.T) {
 	converter.AddType(reflect.TypeOf(SomeStruct{}))
 	converter.CreateFromMethod = false
 	converter.BackupDir = ""
+	converter.CreateConstructor = false
 
 	desiredResult := `export class SomeStruct {
     time: number;
@@ -793,6 +800,7 @@ func TestPTR(t *testing.T) {
 	converter := New()
 	converter.CreateFromMethod = false
 	converter.BackupDir = ""
+	converter.CreateConstructor = false
 	converter.Add(Person{})
 
 	desiredResult := `export class Person {

@@ -80,7 +80,6 @@ var Person = /** @class */ (function () {
                 for (var _i = 0, _a = Object.keys(a); _i < _a.length; _i++) {
                     var key = _a[_i];
                     a[key] = new classs(a[key]);
-                    console.log("key:" + key + "!");
                 }
                 return a;
             }

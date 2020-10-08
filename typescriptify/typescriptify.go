@@ -20,7 +20,7 @@ const (
 	if (!a) {
 		return a;
 	}
-	if ((a as any).slice) {
+	if (a.slice) {
 		return (a as any[]).map(elem => (this.convertValues || eval("convertValues"))(elem, classs));
 	} else if ("object" === typeof a) {
 		if (asMap) {

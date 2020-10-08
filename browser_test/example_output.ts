@@ -70,17 +70,16 @@ export class Person {
         this.friends = this.convertValues(source["friends"], Person);
     }
 
-	convertValues(a: any, classs: any, asMap: boolean = false) {
+	convertValues(a: any, classs: any, asMap: boolean = false): any {
 		if (!a) {
 			return a;
 		}
-		if ((a as any[]).slice) {
+		if (a.slice) {
 			return (a as any[]).map(elem => (this.convertValues || eval("convertValues"))(elem, classs));
 		} else if ("object" === typeof a) {
 			if (asMap) {
 				for (const key of Object.keys(a)) {
 					a[key] = new classs(a[key]);
-					console.log("key:" + key + "!")
 				}
 				return a;
 			}
