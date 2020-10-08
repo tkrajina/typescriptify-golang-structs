@@ -318,7 +318,7 @@ func testTypescriptExpression(t *testing.T, baseScript string, tsExpressionAndDe
 	}
 
 	fmt.Println("tmp ts: ", f.Name())
-	byts, err := exec.Command("tsc", f.Name()).CombinedOutput()
+	byts, err := exec.Command("tsc", "--strict", f.Name()).CombinedOutput()
 	assert.Nil(t, err, string(byts))
 
 	jsFile := strings.Replace(f.Name(), ".ts", ".js", 1)
@@ -848,7 +848,10 @@ func jsonizeOrPanic(i interface{}) string {
 func TestTestConverter(t *testing.T) {
 	t.Parallel()
 
-	ts := `function ` + tsConvertValuesFunc + `
+	ts := `class Converter {
+		` + tsConvertValuesFunc + `
+}
+const converter = new Converter();
 
 class Address {
     street: string;
@@ -862,24 +865,24 @@ class Address {
 `
 
 	testTypescriptExpression(t, ts, []string{
-		`(convertValues(null, Address)) === null`,
-		`(convertValues([], Address)).length === 0`,
-		`(convertValues({}, Address)) instanceof Address`,
-		`!(convertValues({}, Address, true) instanceof Address)`,
+		`(converter.convertValues(null, Address)) === null`,
+		`(converter.convertValues([], Address)).length === 0`,
+		`(converter.convertValues({}, Address)) instanceof Address`,
+		`!(converter.convertValues({}, Address, true) instanceof Address)`,
 
-		`(convertValues([{street: "aaa", number: 19}], Address) as Address[]).length == 1`,
-		`(convertValues([{street: "aaa", number: 19}], Address) as Address[])[0] instanceof Address`,
-		`(convertValues([{street: "aaa", number: 19}], Address) as Address[])[0].number === 19`,
-		`(convertValues([{street: "aaa", number: 19}], Address) as Address[])[0].street === "aaa"`,
+		`(converter.convertValues([{street: "aaa", number: 19}] as any, Address) as Address[]).length == 1`,
+		`(converter.convertValues([{street: "aaa", number: 19}] as any, Address) as Address[])[0] instanceof Address`,
+		`(converter.convertValues([{street: "aaa", number: 19}] as any, Address) as Address[])[0].number === 19`,
+		`(converter.convertValues([{street: "aaa", number: 19}] as any, Address) as Address[])[0].street === "aaa"`,
 
-		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[]).length == 1`,
-		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[])[0][0] instanceof Address`,
-		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[])[0][0].number === 19`,
-		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[])[0][0].street === "aaa"`,
+		`(converter.convertValues([[{street: "aaa", number: 19}]] as any, Address) as Address[]).length == 1`,
+		`(converter.convertValues([[{street: "aaa", number: 19}]] as any, Address) as Address[][])[0][0] instanceof Address`,
+		`(converter.convertValues([[{street: "aaa", number: 19}]] as any, Address) as Address[][])[0][0].number === 19`,
+		`(converter.convertValues([[{street: "aaa", number: 19}]] as any, Address) as Address[][])[0][0].street === "aaa"`,
 
-		`Object.keys((convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})).length == 1`,
-		`(convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})["first"] instanceof Address`,
-		`(convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})["first"].number === 19`,
-		`(convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})["first"].street === "aaa"`,
+		`Object.keys((converter.convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})).length == 1`,
+		`(converter.convertValues({"first": {street: "aaa", number: 19}} as any, Address, true) as {[_: string]: Address})["first"] instanceof Address`,
+		`(converter.convertValues({"first": {street: "aaa", number: 19}} as any, Address, true) as {[_: string]: Address})["first"].number === 19`,
+		`(converter.convertValues({"first": {street: "aaa", number: 19}} as any, Address, true) as {[_: string]: Address})["first"].street === "aaa"`,
 	})
 }
