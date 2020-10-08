@@ -66,7 +66,7 @@ export class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, false, desiredResult, nil)
 }
 
 func TestTypescriptifyWithCustomImports(t *testing.T) {
@@ -98,7 +98,7 @@ export class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, false, desiredResult, nil)
 }
 
 func TestTypescriptifyWithInstances(t *testing.T) {
@@ -128,7 +128,7 @@ class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, false, desiredResult, nil)
 }
 
 func TestTypescriptifyWithInterfaces(t *testing.T) {
@@ -158,7 +158,7 @@ interface Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 func TestTypescriptifyWithDoubleClasses(t *testing.T) {
@@ -187,7 +187,7 @@ export class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, false, desiredResult, nil)
 }
 
 func TestWithPrefixes(t *testing.T) {
@@ -255,10 +255,10 @@ class test_Person_test {
 
 	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
-func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string, tsExpressionAndDesiredResults []string) {
+func testConverter(t *testing.T, converter *TypeScriptify, strictMode bool, desiredResult string, tsExpressionAndDesiredResults []string) {
 	typeScriptCode, err := converter.Convert(nil)
 	if err != nil {
 		panic(err.Error())
@@ -301,10 +301,10 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string,
 		t.FailNow()
 	}
 
-	testTypescriptExpression(t, typeScriptCode, tsExpressionAndDesiredResults)
+	testTypescriptExpression(t, strictMode, typeScriptCode, tsExpressionAndDesiredResults)
 }
 
-func testTypescriptExpression(t *testing.T, baseScript string, tsExpressionAndDesiredResults []string) {
+func testTypescriptExpression(t *testing.T, strictMode bool, baseScript string, tsExpressionAndDesiredResults []string) {
 	f, err := ioutil.TempFile(os.TempDir(), "*.ts")
 	assert.Nil(t, err)
 	assert.NotNil(t, f)
@@ -318,7 +318,12 @@ func testTypescriptExpression(t *testing.T, baseScript string, tsExpressionAndDe
 	}
 
 	fmt.Println("tmp ts: ", f.Name())
-	byts, err := exec.Command("tsc", "--strict", f.Name()).CombinedOutput()
+	var byts []byte
+	if strictMode {
+		byts, err = exec.Command("tsc", "--strict", f.Name()).CombinedOutput()
+	} else {
+		byts, err = exec.Command("tsc", f.Name()).CombinedOutput()
+	}
 	assert.Nil(t, err, string(byts))
 
 	jsFile := strings.Replace(f.Name(), ".ts", ".js", 1)
@@ -343,7 +348,7 @@ func TestTypescriptifyCustomType(t *testing.T) {
 	desiredResult := `export class TestCustomType {
         map: {[key: string]: number};
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, false, desiredResult, nil)
 }
 
 func TestDate(t *testing.T) {
@@ -372,7 +377,7 @@ func TestDate(t *testing.T) {
 }`
 
 	jsn := jsonizeOrPanic(TestCustomType{Time: time.Date(2020, 10, 9, 8, 9, 0, 0, time.UTC)})
-	testConverter(t, converter, desiredResult, []string{
+	testConverter(t, converter, true, desiredResult, []string{
 		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time instanceof Date`,
 		//`console.log(new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON())`,
 		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON() === "2020-10-09T08:09:00.000Z"`,
@@ -405,7 +410,7 @@ func TestRecursive(t *testing.T) {
 
 	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 func TestArrayOfArrays(t *testing.T) {
@@ -449,7 +454,7 @@ export class Keyboard {
 
 	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 func TestAny(t *testing.T) {
@@ -476,7 +481,7 @@ func TestAny(t *testing.T) {
         this.field = source["field"];
 	}
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 type NumberTime time.Time
@@ -501,7 +506,7 @@ func TestTypeAlias(t *testing.T) {
 	desiredResult := `export class Person {
     birth: number;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, false, desiredResult, nil)
 }
 
 type MSTime struct {
@@ -530,7 +535,7 @@ func TestOverrideCustomType(t *testing.T) {
 	desiredResult := `export class SomeStruct {
     time: number;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, false, desiredResult, nil)
 
 	byts, _ := json.Marshal(SomeStruct{Time: MSTime{Time: time.Now()}})
 	if string(byts) != `{"time":1111}` {
@@ -634,7 +639,7 @@ export class Holliday {
         this.weekday = source["weekday"];
     }
 }`
-		testConverter(t, converter, desiredResult, nil)
+		testConverter(t, converter, true, desiredResult, nil)
 	}
 }
 
@@ -667,7 +672,7 @@ export enum Gender {
 	FEMALE = "f",
 }
 `
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 func TestConstructorWithReferences(t *testing.T) {
@@ -728,7 +733,7 @@ export class Person {
 
 	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 type WithMap struct {
@@ -778,16 +783,16 @@ func TestMaps(t *testing.T) {
 		PtrMap:     &map[string]Address{"ccc": {Duration: 2.0, Text1: "txt2"}},
 	}
 
-	testConverter(t, converter, desiredResult, []string{
+	testConverter(t, converter, true, desiredResult, []string{
 		`new WithMap(` + jsonizeOrPanic(json) + `).simpleMap.aaa == 1`,
 		`(new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof Address`,
 		`!((new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof WithMap)`,
 		`new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.duration == 1`,
 		`new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.text === "txt1"`,
-		`(new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc) instanceof Address`,
-		`!((new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc) instanceof WithMap)`,
-		`new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc.duration === 2`,
-		`new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc.text === "txt2"`,
+		`(new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc) instanceof Address`,
+		`!((new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc) instanceof WithMap)`,
+		`new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc?.duration === 2`,
+		`new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc?.text === "txt2"`,
 	})
 }
 
@@ -806,7 +811,7 @@ func TestPTR(t *testing.T) {
 	desiredResult := `export class Person {
     name?: string;
 }`
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 type PersonWithPtrName struct {
@@ -834,7 +839,7 @@ func TestAnonymousPtr(t *testing.T) {
           }
       }
 `
-	testConverter(t, converter, desiredResult, nil)
+	testConverter(t, converter, true, desiredResult, nil)
 }
 
 func jsonizeOrPanic(i interface{}) string {
@@ -864,7 +869,7 @@ class Address {
 }
 `
 
-	testTypescriptExpression(t, ts, []string{
+	testTypescriptExpression(t, true, ts, []string{
 		`(converter.convertValues(null, Address)) === null`,
 		`(converter.convertValues([], Address)).length === 0`,
 		`(converter.convertValues({}, Address)) instanceof Address`,

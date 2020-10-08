@@ -73,7 +73,7 @@ var Person = /** @class */ (function () {
             return a;
         }
         if (a.slice) {
-            return a.map(function (elem) { return (_this.convertValues || eval("convertValues"))(elem, classs); });
+            return a.map(function (elem) { return _this.convertValues(elem, classs); });
         }
         else if ("object" === typeof a) {
             if (asMap) {

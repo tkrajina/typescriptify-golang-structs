@@ -75,7 +75,7 @@ export class Person {
 			return a;
 		}
 		if (a.slice) {
-			return (a as any[]).map(elem => (this.convertValues || eval("convertValues"))(elem, classs));
+			return (a as any[]).map(elem => this.convertValues(elem, classs));
 		} else if ("object" === typeof a) {
 			if (asMap) {
 				for (const key of Object.keys(a)) {
