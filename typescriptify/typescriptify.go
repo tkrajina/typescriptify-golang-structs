@@ -14,8 +14,25 @@ import (
 )
 
 const (
-	tsTransformTag = "ts_transform"
-	tsType         = "ts_type"
+	tsTransformTag      = "ts_transform"
+	tsType              = "ts_type"
+	tsConvertValuesFunc = `convertValues(a: any, classs: any, asMap: boolean = false): any {
+	if (!a) {
+		return a;
+	}
+	if ((a as any).slice) {
+		return (a as any[]).map(elem => (this.convertValues || eval("convertValues"))(elem, classs));
+	} else if ("object" === typeof a) {
+		if (asMap) {
+			for (const key of Object.keys(a)) {
+				a[key] = new classs(a[key]);
+			}
+			return a;
+		}
+		return new classs(a);
+	}
+	return a;
+}`
 )
 
 type enumElement struct {
@@ -72,6 +89,7 @@ func New() *TypeScriptify {
 
 	result.Indent = "    "
 	result.CreateFromMethod = true
+	result.CreateConstructor = true
 
 	return result
 }
@@ -161,11 +179,10 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 
 	t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};", t.indent, fieldName, t.prefix+keyType.Name()+t.suffix, valueTypeName))
-	t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = source[\"%s\"] ? source[\"%s\"] : null;",
-		t.indent, t.indent, strippedFieldName,
-		strippedFieldName, strippedFieldName))
 	if valueType.Kind() == reflect.Struct {
-		t.constructorBody = append(t.constructorBody, fmt.Sprint(t.indent, t.indent, "if (this.", strippedFieldName, ") for(const key of Object.keys(this.", strippedFieldName, ")) { this.", strippedFieldName, "[key] = new Address(this.", strippedFieldName, "[key]) }"))
+		t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = this.convertValues(source[\"%s\"], %s, true);", t.indent, t.indent, strippedFieldName, strippedFieldName, t.prefix+valueTypeName+t.suffix))
+	} else {
+		t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = source[\"%s\"];", t.indent, t.indent, strippedFieldName, strippedFieldName))
 	}
 }
 
@@ -509,12 +526,14 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	}
 
 	if t.CreateFromMethod {
-		fmt.Fprintln(os.Stderr, "CREATEFROM METHOD IS DEPRECATED AND WILL BE REMOVED!!!!!!")
+		fmt.Fprintln(os.Stderr, "FromMethod METHOD IS DEPRECATED AND WILL BE REMOVED!!!!!!")
 		t.CreateConstructor = true
 	}
 
 	result += strings.Join(builder.fields, "\n") + "\n"
 	if !t.CreateInterface {
+		constructorBody := strings.Join(builder.constructorBody, "\n")
+		needsConvertValue := strings.Contains(constructorBody, "this.convertValues")
 		if t.CreateFromMethod {
 			result += fmt.Sprintf("\n%sstatic createFrom(source: any = {}) {\n", t.Indent)
 			result += fmt.Sprintf("%s%sreturn new %s(source);\n", t.Indent, t.Indent, entityName)
@@ -523,8 +542,11 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		if t.CreateConstructor {
 			result += fmt.Sprintf("\n%sconstructor(source: any = {}) {\n", t.Indent)
 			result += t.Indent + t.Indent + "if ('string' === typeof source) source = JSON.parse(source);\n"
-			result += strings.Join(builder.constructorBody, "\n") + "\n"
+			result += constructorBody + "\n"
 			result += fmt.Sprintf("%s}\n", t.Indent)
+		}
+		if needsConvertValue && (t.CreateConstructor || t.CreateFromMethod) {
+			result += "\n" + indentLines(tsConvertValuesFunc, 1) + "\n"
 		}
 	}
 
@@ -618,14 +640,14 @@ func (t *typeScriptClassBuilder) AddStructField(fieldName string, field reflect.
 	fieldType := field.Type.Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 	t.addField(fieldName, t.prefix+fieldType+t.suffix)
-	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] && new %s(source[\"%s\"])", strippedFieldName, t.prefix+fieldType+t.suffix, strippedFieldName))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("this.convertValues(source[\"%s\"], %s)", strippedFieldName, t.prefix+fieldType+t.suffix))
 }
 
 func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field reflect.StructField, arrayDepth int) {
 	fieldType := field.Type.Elem().Name()
 	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 	t.addField(fieldName, fmt.Sprint(t.prefix+fieldType+t.suffix, strings.Repeat("[]", arrayDepth)))
-	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"] && source[\"%s\"].map((element: any) => new %s(element))", strippedFieldName, strippedFieldName, t.prefix+fieldType+t.suffix))
+	t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("this.convertValues(source[\"%s\"], %s)", strippedFieldName, t.prefix+fieldType+t.suffix))
 }
 
 func (t *typeScriptClassBuilder) addInitializerFieldLine(fld, initializer string) {

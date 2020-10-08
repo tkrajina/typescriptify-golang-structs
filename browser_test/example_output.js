@@ -1,6 +1,7 @@
 "use strict";
 /* Do not change, this code is generated from Golang structs */
 exports.__esModule = true;
+exports.Person = exports.PersonalInfo = exports.Address = void 0;
 var Address = /** @class */ (function () {
     function Address(source) {
         var _this = this;
@@ -54,16 +55,38 @@ var Person = /** @class */ (function () {
         if ('string' === typeof source)
             source = JSON.parse(source);
         this.name = source["name"];
-        this.personal_info = source["personal_info"] && new PersonalInfo(source["personal_info"]);
+        this.personal_info = this.convertValues(source["personal_info"], PersonalInfo);
         this.nicknames = source["nicknames"];
-        this.addresses = source["addresses"] && source["addresses"].map(function (element) { return new Address(element); });
-        this.address = source["address"] && new Address(source["address"]);
+        this.addresses = this.convertValues(source["addresses"], Address);
+        this.address = this.convertValues(source["address"], Address);
         this.metadata = source["metadata"];
-        this.friends = source["friends"] && source["friends"].map(function (element) { return new Person(element); });
+        this.friends = this.convertValues(source["friends"], Person);
     }
     Person.createFrom = function (source) {
         if (source === void 0) { source = {}; }
         return new Person(source);
+    };
+    Person.prototype.convertValues = function (a, classs, asMap) {
+        var _this = this;
+        if (asMap === void 0) { asMap = false; }
+        if (!a) {
+            return a;
+        }
+        if (a.slice) {
+            return a.map(function (elem) { return (_this.convertValues || eval("convertValues"))(elem, classs); });
+        }
+        else if ("object" === typeof a) {
+            if (asMap) {
+                for (var _i = 0, _a = Object.keys(a); _i < _a.length; _i++) {
+                    var key = _a[_i];
+                    a[key] = new classs(a[key]);
+                    console.log("key:" + key + "!");
+                }
+                return a;
+            }
+            return new classs(a);
+        }
+        return a;
     };
     return Person;
 }());

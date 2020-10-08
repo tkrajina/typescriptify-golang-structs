@@ -137,7 +137,7 @@ In that case use the constructor:
 
 ```golang
 converter := typescriptify.New().
-    WithConstructor(true)
+    Add(Address)
 ```
 
 The TypeScript code will now be:

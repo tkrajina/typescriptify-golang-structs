@@ -62,13 +62,32 @@ export class Person {
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
-        this.personal_info = source["personal_info"] && new PersonalInfo(source["personal_info"]);
+        this.personal_info = this.convertValues(source["personal_info"], PersonalInfo);
         this.nicknames = source["nicknames"];
-        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new Address(element));
-        this.address = source["address"] && new Address(source["address"]);
+        this.addresses = this.convertValues(source["addresses"], Address);
+        this.address = this.convertValues(source["address"], Address);
         this.metadata = source["metadata"];
-        this.friends = source["friends"] && source["friends"].map((element: any) => new Person(element));
+        this.friends = this.convertValues(source["friends"], Person);
     }
+
+	convertValues(a: any, classs: any, asMap: boolean = false) {
+		if (!a) {
+			return a;
+		}
+		if ((a as any[]).slice) {
+			return (a as any[]).map(elem => (this.convertValues || eval("convertValues"))(elem, classs));
+		} else if ("object" === typeof a) {
+			if (asMap) {
+				for (const key of Object.keys(a)) {
+					a[key] = new classs(a[key]);
+					console.log("key:" + key + "!")
+				}
+				return a;
+			}
+			return new classs(a);
+		}
+		return a;
+	}
     //[Person:]
 
     getInfo = () => {

@@ -65,7 +65,7 @@ export class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestTypescriptifyWithCustomImports(t *testing.T) {
@@ -75,10 +75,10 @@ func TestTypescriptifyWithCustomImports(t *testing.T) {
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.CreateFromMethod = false
 	converter.BackupDir = ""
-	converter.AddImport("import { Decimal } from 'decimal.js'")
+	converter.AddImport("//import { Decimal } from 'decimal.js'")
 
 	desiredResult := `
-import { Decimal } from 'decimal.js'
+//import { Decimal } from 'decimal.js'
 
 export class Dummy {
         something: string;
@@ -96,7 +96,7 @@ export class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestTypescriptifyWithInstances(t *testing.T) {
@@ -125,7 +125,7 @@ class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestTypescriptifyWithInterfaces(t *testing.T) {
@@ -155,7 +155,7 @@ interface Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestTypescriptifyWithDoubleClasses(t *testing.T) {
@@ -183,7 +183,7 @@ export class Person {
 		friends: Person[];
         a: Dummy;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestWithPrefixes(t *testing.T) {
@@ -242,17 +242,19 @@ class test_Person_test {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.nicknames = source["nicknames"];
-        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new test_Address_test(element));
-        this.address = source["address"] && new test_Address_test(source["address"]);
-        this.metadata = source["metadata"];
-        this.friends = source["friends"] && source["friends"].map((element: any) => new test_Person_test(element));
-        this.a = source["a"] && new test_Dummy_test(source["a"]);
+        this.addresses = this.convertValues(source["addresses"], test_Address_test);
+        this.address = this.convertValues(source["address"], test_Address_test);
+		this.metadata = source["metadata"];
+		this.friends = this.convertValues(source["friends"], test_Person_test);
+		this.a = this.convertValues(source["a"], test_Dummy_test);
     }
+
+	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
-func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string) {
+func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string, tsExpressionAndDesiredResults []string) {
 	typeScriptCode, err := converter.Convert(nil)
 	if err != nil {
 		panic(err.Error())
@@ -290,27 +292,35 @@ func testConverter(t *testing.T, converter *TypeScriptify, desiredResult string)
 			}
 		}
 	}
+
+	if t.Failed() {
+		t.FailNow()
+	}
+
+	testTypescriptExpression(t, typeScriptCode, tsExpressionAndDesiredResults)
 }
 
-func testTypescriptExpression(t *testing.T, baseScript, tsExpression, desiredExpressionResult string) {
+func testTypescriptExpression(t *testing.T, baseScript string, tsExpressionAndDesiredResults []string) {
 	f, err := ioutil.TempFile(os.TempDir(), "*.ts")
 	assert.Nil(t, err)
 	assert.NotNil(t, f)
 
 	f.WriteString(baseScript)
 	f.WriteString("\n")
-	f.WriteString(`console.log(` + tsExpression + `)`)
+	for _, expr := range tsExpressionAndDesiredResults {
+		f.WriteString("// " + expr + "\n")
+		f.WriteString(`if (` + expr + `) { console.log("OK") } else { throw new Error() }`)
+		f.WriteString("\n\n")
+	}
 
 	fmt.Println("tmp ts: ", f.Name())
 	byts, err := exec.Command("tsc", f.Name()).CombinedOutput()
-	assert.Nil(t, err)
+	assert.Nil(t, err, string(byts))
 
 	jsFile := strings.Replace(f.Name(), ".ts", ".js", 1)
 	fmt.Println("executing:", jsFile)
 	byts, err = exec.Command("node", jsFile).CombinedOutput()
-	assert.Nil(t, err)
-
-	assert.Equal(t, desiredExpressionResult, strings.TrimSpace(string(byts)))
+	assert.Nil(t, err, string(byts))
 }
 
 func TestTypescriptifyCustomType(t *testing.T) {
@@ -328,7 +338,7 @@ func TestTypescriptifyCustomType(t *testing.T) {
 	desiredResult := `export class TestCustomType {
         map: {[key: string]: number};
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestDate(t *testing.T) {
@@ -355,7 +365,13 @@ func TestDate(t *testing.T) {
         this.time = new Date(source["time"]);
     }
 }`
-	testConverter(t, converter, desiredResult)
+
+	jsn := jsonizeOrPanic(TestCustomType{Time: time.Date(2020, 10, 9, 8, 9, 0, 0, time.UTC)})
+	testConverter(t, converter, desiredResult, []string{
+		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time instanceof Date`,
+		//`console.log(new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON())`,
+		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON() === "2020-10-09T08:09:00.000Z"`,
+	})
 }
 
 func TestRecursive(t *testing.T) {
@@ -379,10 +395,12 @@ func TestRecursive(t *testing.T) {
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
-        this.children = source["children"] && source["children"].map((element: any) => new Test(element));
+        this.children = this.convertValues(source["children"], Test);
     }
+
+	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestArrayOfArrays(t *testing.T) {
@@ -421,10 +439,12 @@ export class Keyboard {
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
-        this.keys = source["keys"] && source["keys"].map((element: any) => new Key(element));
+        this.keys = this.convertValues(source["keys"], Key);
     }
+
+	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestAny(t *testing.T) {
@@ -449,9 +469,9 @@ func TestAny(t *testing.T) {
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.field = source["field"];
-    }
+	}
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 type NumberTime time.Time
@@ -475,7 +495,7 @@ func TestTypeAlias(t *testing.T) {
 	desiredResult := `export class Person {
     birth: number;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 type MSTime struct {
@@ -503,7 +523,7 @@ func TestOverrideCustomType(t *testing.T) {
 	desiredResult := `export class SomeStruct {
     time: number;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 
 	byts, _ := json.Marshal(SomeStruct{Time: MSTime{Time: time.Now()}})
 	if string(byts) != `{"time":1111}` {
@@ -607,7 +627,7 @@ export class Holliday {
         this.weekday = source["weekday"];
     }
 }`
-		testConverter(t, converter, desiredResult)
+		testConverter(t, converter, desiredResult, nil)
 	}
 }
 
@@ -640,7 +660,7 @@ export enum Gender {
 	FEMALE = "f",
 }
 `
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func TestConstructorWithReferences(t *testing.T) {
@@ -692,14 +712,16 @@ export class Person {
         if ('string' === typeof source) source = JSON.parse(source);
         this.name = source["name"];
         this.nicknames = source["nicknames"];
-        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new Address(element));
-        this.address = source["address"] && new Address(source["address"]);
+        this.addresses = this.convertValues(source["addresses"], Address);
+        this.address = this.convertValues(source["address"], Address);
         this.metadata = source["metadata"];
-        this.friends = source["friends"] && source["friends"].map((element: any) => new Person(element));
-        this.a = source["a"] && new Dummy(source["a"]);
+        this.friends = this.convertValues(source["friends"], Person);
+        this.a = this.convertValues(source["a"], Dummy);
     }
+
+	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 type WithMap struct {
@@ -725,7 +747,7 @@ func TestMaps(t *testing.T) {
               if ('string' === typeof source) source = JSON.parse(source);
               this.duration = source["duration"];
               this.text = source["text"];
-          }
+		  }
       }
       export class WithMap {
           simpleMap: {[key: string]: number};
@@ -734,15 +756,14 @@ func TestMaps(t *testing.T) {
 
           constructor(source: any = {}) {
               if ('string' === typeof source) source = JSON.parse(source);
-              this.simpleMap = source["simpleMap"] ? source["simpleMap"] : null;
-			  this.mapObjects = source["mapObjects"] ? source["mapObjects"] : null;
-			  if (this.mapObjects) for(const key of Object.keys(this.mapObjects)) { this.mapObjects[key] = new Address(this.mapObjects[key]) }
-			  this.ptrMapObjects = source["ptrMapObjects"] ? source["ptrMapObjects"] : null;
-			  if (this.ptrMapObjects) for(const key of Object.keys(this.ptrMapObjects)) { this.ptrMapObjects[key] = new Address(this.ptrMapObjects[key]) }
-          }
+              this.simpleMap = source["simpleMap"];
+			  this.mapObjects = this.convertValues(source["mapObjects"], Address, true);
+			  this.ptrMapObjects = this.convertValues(source["ptrMapObjects"], Address, true);
+		  }
+
+		  ` + tsConvertValuesFunc + `
       }
 `
-	testConverter(t, converter, desiredResult)
 
 	json := WithMap{
 		Map:        map[string]int{"aaa": 1},
@@ -750,17 +771,17 @@ func TestMaps(t *testing.T) {
 		PtrMap:     &map[string]Address{"ccc": {Duration: 2.0, Text1: "txt2"}},
 	}
 
-	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).simpleMap.aaa`, "1")
-
-	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb) instanceof Address`, "true")
-	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb) instanceof WithMap`, "false")
-	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb.duration`, "1")
-	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).mapObjects.bbb.text`, "txt1")
-
-	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc) instanceof Address`, "true")
-	testTypescriptExpression(t, desiredResult, `(new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc) instanceof WithMap`, "false")
-	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc.duration`, "2")
-	testTypescriptExpression(t, desiredResult, `new WithMap(`+jsonizeOrPanic(json)+`).ptrMapObjects.ccc.text`, "txt2")
+	testConverter(t, converter, desiredResult, []string{
+		`new WithMap(` + jsonizeOrPanic(json) + `).simpleMap.aaa == 1`,
+		`(new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof Address`,
+		`!((new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof WithMap)`,
+		`new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.duration == 1`,
+		`new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.text === "txt1"`,
+		`(new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc) instanceof Address`,
+		`!((new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc) instanceof WithMap)`,
+		`new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc.duration === 2`,
+		`new WithMap(` + jsonizeOrPanic(json) + `).ptrMapObjects.ccc.text === "txt2"`,
+	})
 }
 
 func TestPTR(t *testing.T) {
@@ -777,7 +798,7 @@ func TestPTR(t *testing.T) {
 	desiredResult := `export class Person {
     name?: string;
 }`
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 type PersonWithPtrName struct {
@@ -805,7 +826,7 @@ func TestAnonymousPtr(t *testing.T) {
           }
       }
 `
-	testConverter(t, converter, desiredResult)
+	testConverter(t, converter, desiredResult, nil)
 }
 
 func jsonizeOrPanic(i interface{}) string {
@@ -814,4 +835,43 @@ func jsonizeOrPanic(i interface{}) string {
 		panic(err)
 	}
 	return string(byts)
+}
+
+func TestTestConverter(t *testing.T) {
+	t.Parallel()
+
+	ts := `function ` + tsConvertValuesFunc + `
+
+class Address {
+    street: string;
+    number: number;
+    
+    constructor(a: any) {
+        this.street = a["street"];
+        this.number = a["number"];
+    }
+}
+`
+
+	testTypescriptExpression(t, ts, []string{
+		`(convertValues(null, Address)) === null`,
+		`(convertValues([], Address)).length === 0`,
+		`(convertValues({}, Address)) instanceof Address`,
+		`!(convertValues({}, Address, true) instanceof Address)`,
+
+		`(convertValues([{street: "aaa", number: 19}], Address) as Address[]).length == 1`,
+		`(convertValues([{street: "aaa", number: 19}], Address) as Address[])[0] instanceof Address`,
+		`(convertValues([{street: "aaa", number: 19}], Address) as Address[])[0].number === 19`,
+		`(convertValues([{street: "aaa", number: 19}], Address) as Address[])[0].street === "aaa"`,
+
+		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[]).length == 1`,
+		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[])[0][0] instanceof Address`,
+		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[])[0][0].number === 19`,
+		`(convertValues([[{street: "aaa", number: 19}]], Address) as Address[])[0][0].street === "aaa"`,
+
+		`Object.keys((convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})).length == 1`,
+		`(convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})["first"] instanceof Address`,
+		`(convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})["first"].number === 19`,
+		`(convertValues({"first": {street: "aaa", number: 19}}, Address, true) as {[_: string]: Address})["first"].street === "aaa"`,
+	})
 }
