@@ -202,16 +202,6 @@ func (t *TypeScriptify) ManageType(obj interface{}, ts, tf string) *TypeScriptif
 	return t
 }
 
-func (t *TypeScriptify) IsTypeManaged(typeOf reflect.Type) bool {
-	for _, registered := range t.managedTypes {
-		if registered.Type == typeOf {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.StructField) {
 	keyType := field.Type.Key()
 	valueType := field.Type.Elem()
@@ -437,7 +427,7 @@ func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement)
 }
 
 func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
-	if _, found := t.alreadyConverted[typeOf]; found || t.IsTypeManaged(typeOf) { // Already converted
+	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
 
@@ -454,10 +444,11 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		result = "export " + result
 	}
 	builder := typeScriptClassBuilder{
-		types:  t.kinds,
-		indent: t.Indent,
-		prefix: t.Prefix,
-		suffix: t.Suffix,
+		managedTypes: t.managedTypes,
+		types:        t.kinds,
+		indent:       t.Indent,
+		prefix:       t.Prefix,
+		suffix:       t.Suffix,
 	}
 
 	fields := deepFields(typeOf)
@@ -625,6 +616,7 @@ func (t *TypeScriptify) AddImport(i string) {
 }
 
 type typeScriptClassBuilder struct {
+	managedTypes         []managedType
 	types                map[reflect.Kind]string
 	indent               string
 	fields               []string
@@ -633,13 +625,41 @@ type typeScriptClassBuilder struct {
 	prefix, suffix       string
 }
 
+func (t *typeScriptClassBuilder) IsTypeManaged(typeOf reflect.Type) bool {
+	for _, registered := range t.managedTypes {
+		if registered.Type == typeOf {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (t *typeScriptClassBuilder) getManagedType(typeOf reflect.Type) *managedType {
+	for _, registered := range t.managedTypes {
+		if registered.Type == typeOf {
+			return &registered
+		}
+	}
+
+	return &managedType{Type: typeOf}
+}
+
 func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField, arrayDepth int) error {
 	fieldType, kind := field.Type.Elem().Name(), field.Type.Elem().Kind()
 	typeScriptType := t.types[kind]
 
+	var managed *managedType
+	if t.IsTypeManaged(field.Type.Elem()) {
+		managed = t.getManagedType(field.Type.Elem())
+	}
+
 	if len(fieldName) > 0 {
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 		customTSType := field.Tag.Get(tsType)
+		if managed != nil && managed.TSType != nil {
+			customTSType = *managed.TSType
+		}
 		if len(customTSType) > 0 {
 			t.addField(fieldName, customTSType)
 			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
@@ -658,12 +678,24 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 	fieldType, kind := field.Type.Name(), field.Type.Kind()
 	customTSType := field.Tag.Get(tsType)
 
+	var managed *managedType
+	if t.IsTypeManaged(field.Type) {
+		managed = t.getManagedType(field.Type)
+	}
+
+	if managed != nil && managed.TSType != nil {
+		customTSType = *managed.TSType
+	}
+
 	typeScriptType := t.types[kind]
 	if len(customTSType) > 0 {
 		typeScriptType = customTSType
 	}
 
 	customTransformation := field.Tag.Get(tsTransformTag)
+	if managed != nil && managed.TSTransform != nil {
+		customTransformation = *managed.TSTransform
+	}
 
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
