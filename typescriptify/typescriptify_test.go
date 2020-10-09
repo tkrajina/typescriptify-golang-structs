@@ -369,7 +369,7 @@ func TestTypescriptifyCustomType(t *testing.T) {
 func TestDate(t *testing.T) {
 	t.Parallel()
 	type TestCustomType struct {
-		Time time.Time `json:"time" ts_type:"Date" ts_transform:"new Date(__VALUE__)"`
+		Time time.Time `json:"time"`
 	}
 
 	converter := New()

@@ -208,7 +208,7 @@ export class Data {
 ```
 
 If the JSON field needs some special handling before converting it to a javascript object, use `ts_transform`.
-For example, Dates can be handles this way:
+For example:
 
 ```golang
 type Data struct {
@@ -239,6 +239,24 @@ converter.AddImport("import Decimal from 'decimal.js'")
 ```
 
 This will put your import on top of the generated file.
+
+Additionally, you can pass optional arguments to `.Add` that map to `ts_type` and `ts_transform`:
+
+```golang
+converter := typescriptify.New()
+converter.Add(time.Time{}, "Date", "new Date(__VALUE__)")
+```
+
+This is how now `time.Time` is manage in the library by default.
+
+If you only want to change `ts_transform` but not `ts_type` you can pass an empty string:
+
+```golang
+converter := typescriptify.New()
+converter.Add(time.Time{}, "", "new Date(__VALUE__)")
+```
+
+Calling `.Add` multiple times with the same type overrides previous additions.
 
 ## Enums
 
