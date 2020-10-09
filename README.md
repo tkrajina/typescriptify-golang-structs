@@ -67,44 +67,116 @@ Example input structs:
 
 ```golang
 type Address struct {
-    Duration float64 `json:"duration"`
-    Text1    string  `json:"text,omitempty"`
-    // Ignored:
-    Text2 string `json:",omitempty"`
-    Text3 string `json:"-"`
+	City    string  `json:"city"`
+	Number  float64 `json:"number"`
+	Country string  `json:"country,omitempty"`
 }
 
-type Dummy struct {
-    Something string `json:"something"`
+type PersonalInfo struct {
+	Hobbies []string `json:"hobby"`
+	PetName string   `json:"pet_name"`
 }
 
 type Person struct {
-    Name      string    `json:"name"`
-    Nicknames []string  `json:"nicknames"`
-    Addresses []Address `json:"addresses"`
-    Dummy     Dummy     `json:"a"`
+	Name         string       `json:"name"`
+	PersonalInfo PersonalInfo `json:"personal_info"`
+	Nicknames    []string     `json:"nicknames"`
+	Addresses    []Address    `json:"addresses"`
+	Address      *Address     `json:"address"`
+	Metadata     []byte       `json:"metadata" ts_type:"{[key:string]:string}"`
+	Friends      []*Person    `json:"friends"`
 }
 ```
 
 Generated TypeScript:
 
 ```typescript
-class Dummy {
-        something : string;
+export class Address {
+    city: string;
+    number: number;
+    country?: string;
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.city = source["city"];
+        this.number = source["number"];
+        this.country = source["country"];
+    }
 }
-class Address {
-        duration : number;
-        text : string;
+export class PersonalInfo {
+    hobby: string[];
+    pet_name: string;
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.hobby = source["hobby"];
+        this.pet_name = source["pet_name"];
+    }
 }
-class Person {
-        name : string;
-        nicknames : string[];
-        addresses : Address[];
-        a : Dummy;
+export class Person {
+    name: string;
+    personal_info: PersonalInfo;
+    nicknames: string[];
+    addresses: Address[];
+    address?: Address;
+    metadata: {[key:string]:string};
+    friends: Person[];
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.name = source["name"];
+        this.personal_info = this.convertValues(source["personal_info"], PersonalInfo);
+        this.nicknames = source["nicknames"];
+        this.addresses = this.convertValues(source["addresses"], Address);
+        this.address = this.convertValues(source["address"], Address);
+        this.metadata = source["metadata"];
+        this.friends = this.convertValues(source["friends"], Person);
+    }
+
+	convertValues(a: any, classs: any, asMap: boolean = false): any {
+		if (!a) {
+			return a;
+		}
+		if (a.slice) {
+			return (a as any[]).map(elem => this.convertValues(elem, classs));
+		} else if ("object" === typeof a) {
+			if (asMap) {
+				for (const key of Object.keys(a)) {
+					a[key] = new classs(a[key]);
+				}
+				return a;
+			}
+			return new classs(a);
+		}
+		return a;
+	}
 }
 ```
 
-In TypeScript you can just cast your javascript object in any of those models:
+If you prefer interfaces, the output is:
+
+```typescript
+export interface Address {
+    city: string;
+    number: number;
+    country?: string;
+}
+export interface PersonalInfo {
+    hobby: string[];
+    pet_name: string;
+}
+export interface Person {
+    name: string;
+    personal_info: PersonalInfo;
+    nicknames: string[];
+    addresses: Address[];
+    address?: Address;
+    metadata: {[key:string]:string};
+    friends: Person[];
+}
+```
+
+In TypeScript you can just cast your json object in any of those models:
 
 ```typescript
 var person = <Person> {"name":"Me myself","nicknames":["aaa", "bbb"]};
@@ -133,47 +205,8 @@ class Address {
 The lines between `//[Address:]` and `//[end]` will be left intact after `ConvertToFile()`.
 
 If your custom code contain methods, then just casting yout object to the target class (with `<Person> {...}`) won't work because the casted object won't contain your methods.
+
 In that case use the constructor:
-
-```golang
-converter := typescriptify.New().
-    Add(Address)
-```
-
-The TypeScript code will now be:
-
-```typescript
-export class Person {
-    name: string;
-    nicknames: string[];
-    addresses: Address[];
-    address: Address;
-    metadata: {[key:string]:string};
-    friends: Person[];
-    a: Dummy;
-
-    constructor(source: any = {}) {
-        if ('string' === typeof source) source = JSON.parse(source);
-        this.name = source["name"];
-        this.nicknames = source["nicknames"];
-        this.addresses = source["addresses"] && source["addresses"].map((element: any) => new Address(element));
-        this.address = source["address"] && new Address(source["address"]);
-        this.metadata = source["metadata"];
-        this.friends = source["friends"] && source["friends"].map((element: any) => new Person(element));
-        this.a = source["a"] && new Dummy(source["a"]);
-    }
-
-    //[Person:]
-
-    yourMethod = () => {
-        return "name:" + this.name;
-    }
-
-    //[end]
-}
-```
-
-And now, instead of casting to `Person` you need to:
 
 ```typescript
 var person = new Person({"name":"Me myself","nicknames":["aaa", "bbb"]});
@@ -195,7 +228,7 @@ If your field has a type not supported by typescriptify which can be JSONized as
 
 ```golang
 type Data struct {
-    Counters map[string]int `json:"counters" ts_type:"{[key: string]: number}"`
+    Counters map[string]int `json:"counters" ts_type:"CustomType"`
 }
 ```
 
@@ -203,7 +236,7 @@ type Data struct {
 
 ```typescript
 export class Data {
-        counters: {[key: string]: number};
+        counters: CustomType;
 }
 ```
 

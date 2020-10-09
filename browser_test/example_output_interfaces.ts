@@ -5,22 +5,10 @@ export interface Address {
     city: string;
     number: number;
     country?: string;
-    //[Address:]
-    /* Custom code here */
-
-    [key: string]: any
-
-    //[end]
 }
 export interface PersonalInfo {
     hobby: string[];
     pet_name: string;
-    //[PersonalInfo:]
-    /* Custom code here */
-
-    [key: string]: any
-
-    //[end]
 }
 export interface Person {
     name: string;
