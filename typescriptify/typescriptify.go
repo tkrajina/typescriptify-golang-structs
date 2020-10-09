@@ -54,7 +54,7 @@ type TypeScriptify struct {
 	golangTypes []reflect.Type
 	enumTypes   []reflect.Type
 	enums       map[reflect.Type][]enumElement
-	types       map[reflect.Kind]string
+	kinds       map[reflect.Kind]string
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
@@ -85,7 +85,7 @@ func New() *TypeScriptify {
 
 	types[reflect.String] = "string"
 
-	result.types = types
+	result.kinds = types
 
 	result.Indent = "    "
 	result.CreateFromMethod = true
@@ -404,7 +404,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		result = "export " + result
 	}
 	builder := typeScriptClassBuilder{
-		types:  t.types,
+		types:  t.kinds,
 		indent: t.Indent,
 		prefix: t.Prefix,
 		suffix: t.Suffix,
