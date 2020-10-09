@@ -426,6 +426,11 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 		return "", nil
 	}
 
+	// this type is meant to be used as a field only
+	if typeOf.TSType != nil || typeOf.TSTransform != nil {
+		return "", nil
+	}
+
 	t.alreadyConverted[typeOf.Type] = true
 
 	entityName := t.Prefix + typeOf.Type.Name() + t.Suffix
