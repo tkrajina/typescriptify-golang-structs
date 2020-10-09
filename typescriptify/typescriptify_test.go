@@ -36,7 +36,7 @@ type Person struct {
 	Nicknames []string  `json:"nicknames"`
 	Addresses []Address `json:"addresses"`
 	Address   *Address  `json:"address"`
-	Metadata  []byte    `json:"metadata" ts_type:"{[key:string]:string}"`
+	Metadata  string    `json:"metadata" ts_type:"{[key:string]:string}" ts_transform:"JSON.parse(__VALUE__ || \"{}\")"`
 	Friends   []*Person `json:"friends"`
 	Dummy     Dummy     `json:"a"`
 }
@@ -248,14 +248,31 @@ class test_Person_test {
         this.nicknames = source["nicknames"];
         this.addresses = this.convertValues(source["addresses"], test_Address_test);
         this.address = this.convertValues(source["address"], test_Address_test);
-		this.metadata = source["metadata"];
+		this.metadata = JSON.parse(source["metadata"] || "{}");
 		this.friends = this.convertValues(source["friends"], test_Person_test);
 		this.a = this.convertValues(source["a"], test_Dummy_test);
     }
 
 	` + tsConvertValuesFunc + `
 }`
-	testConverter(t, converter, true, desiredResult, nil)
+	jsn := jsonizeOrPanic(Person{
+		Address:   &Address{Text1: "txt1"},
+		Addresses: []Address{{Text1: "111"}},
+		Metadata:  `{"something": "aaa"}`,
+	})
+	testConverter(t, converter, true, desiredResult, []string{
+		`new test_Person_test()`,
+		`JSON.stringify(new test_Person_test()?.metadata) === "{}"`,
+		`!(new test_Person_test()?.address)`,
+		`!(new test_Person_test()?.addresses)`,
+		`!(new test_Person_test()?.addresses)`,
+
+		`new test_Person_test(` + jsn + ` as any)`,
+		`new test_Person_test(` + jsn + ` as any)?.metadata?.something === "aaa"`,
+		`(new test_Person_test(` + jsn + ` as any)?.address as test_Address_test).text === "txt1"`,
+		`new test_Person_test(` + jsn + ` as any)?.addresses?.length === 1`,
+		`(new test_Person_test(` + jsn + ` as any)?.addresses[0] as test_Address_test)?.text === "111"`,
+	})
 }
 
 func testConverter(t *testing.T, converter *TypeScriptify, strictMode bool, desiredResult string, tsExpressionAndDesiredResults []string) {
@@ -287,11 +304,9 @@ func testConverter(t *testing.T, converter *TypeScriptify, strictMode bool, desi
 			if i < len(expectedLines2) {
 				expectedLine = expectedLines2[i]
 			}
-			if strings.TrimSpace(gotLine) == strings.TrimSpace(expectedLine) {
+			if assert.Equal(t, strings.TrimSpace(expectedLine), strings.TrimSpace(gotLine), "line #%d", 1+i) {
 				fmt.Printf("OK:       %s\n", gotLine)
 			} else {
-				fmt.Printf("GOT:      %s\n", gotLine)
-				fmt.Printf("EXPECTED: %s\n", expectedLine)
 				t.Fail()
 			}
 		}
@@ -311,9 +326,9 @@ func testTypescriptExpression(t *testing.T, strictMode bool, baseScript string, 
 
 	f.WriteString(baseScript)
 	f.WriteString("\n")
-	for _, expr := range tsExpressionAndDesiredResults {
+	for n, expr := range tsExpressionAndDesiredResults {
 		f.WriteString("// " + expr + "\n")
-		f.WriteString(`if (` + expr + `) { console.log("OK") } else { throw new Error() }`)
+		f.WriteString(`if (` + expr + `) { console.log("#` + fmt.Sprint(1+n) + ` OK") } else { throw new Error() }`)
 		f.WriteString("\n\n")
 	}
 
@@ -538,9 +553,7 @@ func TestOverrideCustomType(t *testing.T) {
 	testConverter(t, converter, false, desiredResult, nil)
 
 	byts, _ := json.Marshal(SomeStruct{Time: MSTime{Time: time.Now()}})
-	if string(byts) != `{"time":1111}` {
-		t.Error("marhshalling failed")
-	}
+	assert.Equal(t, `{"time":1111}`, string(byts))
 }
 
 type Weekday int
@@ -726,7 +739,7 @@ export class Person {
         this.nicknames = source["nicknames"];
         this.addresses = this.convertValues(source["addresses"], Address);
         this.address = this.convertValues(source["address"], Address);
-        this.metadata = source["metadata"];
+		this.metadata = JSON.parse(source["metadata"] || "{}");
         this.friends = this.convertValues(source["friends"], Person);
         this.a = this.convertValues(source["a"], Dummy);
     }
