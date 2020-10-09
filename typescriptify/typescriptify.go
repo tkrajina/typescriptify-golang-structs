@@ -421,6 +421,26 @@ func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement)
 	return result, nil
 }
 
+func (t *TypeScriptify) searchRegisteredStruct(typeOf reflect.StructField) *golangType {
+	for _, registered := range t.golangTypes {
+		if registered.Type == typeOf.Type.Elem() {
+			return &registered
+		}
+	}
+
+	return &golangType{Type: typeOf.Type.Elem()}
+}
+
+func (t *TypeScriptify) searchRegisteredType(typeOf reflect.Type) *golangType {
+	for _, registered := range t.golangTypes {
+		if registered.Type == typeOf {
+			return &registered
+		}
+	}
+
+	return &golangType{Type: typeOf}
+}
+
 func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]string) (string, error) {
 	if _, found := t.alreadyConverted[typeOf.Type]; found { // Already converted
 		return "", nil
@@ -445,6 +465,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 		suffix: t.Suffix,
 	}
 
+	hasNoCustomSet := typeOf.TSType == nil && typeOf.TSTransform == nil
 	fields := deepFields(typeOf.Type)
 	for _, field := range fields {
 		isPtr := field.Type.Kind() == reflect.Ptr
@@ -484,8 +505,9 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 				builder.AddEnumField(jsonFieldName, field)
 			} else if customTSType != "" || typeOf.TSType != nil { // Struct:
 				err = builder.AddSimpleField(jsonFieldName, field, typeOf.TSType, typeOf.TSTransform)
-			} else if field.Type.Kind() == reflect.Struct { // Struct:
-				typeScriptChunk, err := t.convertType(golangType{Type: field.Type}, customCode)
+			} else if field.Type.Kind() == reflect.Struct && hasNoCustomSet { // Struct:
+				registeredStruct := t.searchRegisteredStruct(field)
+				typeScriptChunk, err := t.convertType(*registeredStruct, customCode)
 				if err != nil {
 					return "", err
 				}
@@ -493,7 +515,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 					result = typeScriptChunk + "\n" + result
 				}
 				builder.AddStructField(jsonFieldName, field)
-			} else if field.Type.Kind() == reflect.Map {
+			} else if field.Type.Kind() == reflect.Map && hasNoCustomSet {
 				// Also convert map key types if needed
 				var keyTypeToConvert reflect.Type
 				switch field.Type.Key().Kind() {
@@ -503,7 +525,8 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 					keyTypeToConvert = field.Type.Key().Elem()
 				}
 				if keyTypeToConvert != nil {
-					typeScriptChunk, err := t.convertType(golangType{Type: keyTypeToConvert}, customCode)
+					registeredType := t.searchRegisteredType(keyTypeToConvert)
+					typeScriptChunk, err := t.convertType(*registeredType, customCode)
 					if err != nil {
 						return "", err
 					}
@@ -520,7 +543,8 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 					valueTypeToConvert = field.Type.Elem().Elem()
 				}
 				if valueTypeToConvert != nil {
-					typeScriptChunk, err := t.convertType(golangType{Type: valueTypeToConvert}, customCode)
+					registeredType := t.searchRegisteredType(valueTypeToConvert)
+					typeScriptChunk, err := t.convertType(*registeredType, customCode)
 					if err != nil {
 						return "", err
 					}
@@ -530,7 +554,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 				}
 
 				builder.AddMapField(jsonFieldName, field)
-			} else if field.Type.Kind() == reflect.Slice { // Slice:
+			} else if field.Type.Kind() == reflect.Slice && hasNoCustomSet { // Slice:
 				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
 					field.Type = field.Type.Elem()
 				}
@@ -542,7 +566,9 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 				}
 
 				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-					typeScriptChunk, err := t.convertType(golangType{Type: field.Type.Elem()}, customCode)
+					registeredStruct := t.searchRegisteredStruct(field)
+
+					typeScriptChunk, err := t.convertType(*registeredStruct, customCode)
 					if err != nil {
 						return "", err
 					}
