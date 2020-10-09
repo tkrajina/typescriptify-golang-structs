@@ -35,7 +35,7 @@ const (
 }`
 )
 
-type golangType struct {
+type managedType struct {
 	Type        reflect.Type
 	TSType      *string
 	TSTransform *string
@@ -57,10 +57,11 @@ type TypeScriptify struct {
 	CreateInterface   bool
 	customImports     []string
 
-	golangTypes []golangType
-	enumTypes   []reflect.Type
-	enums       map[reflect.Type][]enumElement
-	kinds       map[reflect.Kind]string
+	golangTypes  []reflect.Type
+	managedTypes []managedType
+	enumTypes    []reflect.Type
+	enums        map[reflect.Type][]enumElement
+	kinds        map[reflect.Kind]string
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
@@ -98,7 +99,7 @@ func New() *TypeScriptify {
 	result.CreateConstructor = true
 
 	// manage time.Time automatically
-	result = result.Add(time.Time{}, "Date", "new Date(__VALUE__)")
+	result = result.ManageType(time.Time{}, "Date", "new Date(__VALUE__)")
 
 	return result
 }
@@ -162,39 +163,53 @@ func (t *TypeScriptify) WithSuffix(s string) *TypeScriptify {
 	return t
 }
 
-func (t *TypeScriptify) Add(obj interface{}, options ...string) *TypeScriptify {
-	t.AddType(reflect.TypeOf(obj), options...)
+func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
+	t.AddType(reflect.TypeOf(obj))
 	return t
 }
 
-func (t *TypeScriptify) AddType(typeOf reflect.Type, options ...string) *TypeScriptify {
-	addition := golangType{
-		Type: typeOf,
+func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
+	t.golangTypes = append(t.golangTypes, typeOf)
+
+	return t
+}
+
+func (t *TypeScriptify) ManageType(obj interface{}, ts, tf string) *TypeScriptify {
+	managed := managedType{Type: reflect.TypeOf(obj)}
+	if ts != "" {
+		managed.TSType = &ts
 	}
 
-	if len(options) >= 1 && options[0] != "" {
-		addition.TSType = &options[0]
+	if tf != "" {
+		managed.TSTransform = &tf
 	}
 
-	if len(options) >= 2 && options[1] != "" {
-		addition.TSTransform = &options[1]
-	}
-
-	// search the type to replace it later
 	pos := -1
-	for index, element := range t.golangTypes {
-		if element.Type == addition.Type {
+	for index, registered := range t.managedTypes {
+		if managed.Type == registered.Type {
 			pos = index
 			break
 		}
 	}
-	if pos > -1 {
-		// replace the type
-		t.golangTypes[pos] = addition
+
+	// replace managed type previously registered
+	if pos > 0 {
+		t.managedTypes[pos] = managed
 	} else {
-		t.golangTypes = append(t.golangTypes, addition)
+		t.managedTypes = append(t.managedTypes, managed)
 	}
+
 	return t
+}
+
+func (t *TypeScriptify) IsTypeManaged(typeOf reflect.Type) bool {
+	for _, registered := range t.managedTypes {
+		if registered.Type == typeOf {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.StructField) {
@@ -421,19 +436,14 @@ func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement)
 	return result, nil
 }
 
-func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]string) (string, error) {
-	if _, found := t.alreadyConverted[typeOf.Type]; found { // Already converted
+func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
+	if _, found := t.alreadyConverted[typeOf]; found || t.IsTypeManaged(typeOf) { // Already converted
 		return "", nil
 	}
 
-	// this type is meant to be used as a field only
-	if typeOf.TSType != nil || typeOf.TSTransform != nil {
-		return "", nil
-	}
+	t.alreadyConverted[typeOf] = true
 
-	t.alreadyConverted[typeOf.Type] = true
-
-	entityName := t.Prefix + typeOf.Type.Name() + t.Suffix
+	entityName := t.Prefix + typeOf.Name() + t.Suffix
 	result := ""
 	if t.CreateInterface {
 		result += fmt.Sprintf("interface %s {\n", entityName)
@@ -450,7 +460,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 		suffix: t.Suffix,
 	}
 
-	fields := deepFields(typeOf.Type)
+	fields := deepFields(typeOf)
 	for _, field := range fields {
 		isPtr := field.Type.Kind() == reflect.Ptr
 		if isPtr {
@@ -483,14 +493,14 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 
 			customTSType := field.Tag.Get(tsType)
 
-			if customTransformation != "" || typeOf.TSTransform != nil {
-				err = builder.AddSimpleField(jsonFieldName, field, typeOf.TSType, typeOf.TSTransform)
+			if customTransformation != "" {
+				err = builder.AddSimpleField(jsonFieldName, field)
 			} else if _, isEnum := t.enums[field.Type]; isEnum {
 				builder.AddEnumField(jsonFieldName, field)
-			} else if customTSType != "" || typeOf.TSType != nil { // Struct:
-				err = builder.AddSimpleField(jsonFieldName, field, typeOf.TSType, typeOf.TSTransform)
+			} else if customTSType != "" { // Struct:
+				err = builder.AddSimpleField(jsonFieldName, field)
 			} else if field.Type.Kind() == reflect.Struct { // Struct:
-				typeScriptChunk, err := t.convertType(golangType{Type: field.Type}, customCode)
+				typeScriptChunk, err := t.convertType(field.Type, customCode)
 				if err != nil {
 					return "", err
 				}
@@ -508,7 +518,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 					keyTypeToConvert = field.Type.Key().Elem()
 				}
 				if keyTypeToConvert != nil {
-					typeScriptChunk, err := t.convertType(golangType{Type: keyTypeToConvert}, customCode)
+					typeScriptChunk, err := t.convertType(keyTypeToConvert, customCode)
 					if err != nil {
 						return "", err
 					}
@@ -525,7 +535,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 					valueTypeToConvert = field.Type.Elem().Elem()
 				}
 				if valueTypeToConvert != nil {
-					typeScriptChunk, err := t.convertType(golangType{Type: valueTypeToConvert}, customCode)
+					typeScriptChunk, err := t.convertType(valueTypeToConvert, customCode)
 					if err != nil {
 						return "", err
 					}
@@ -547,7 +557,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 				}
 
 				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-					typeScriptChunk, err := t.convertType(golangType{Type: field.Type.Elem()}, customCode)
+					typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
 					if err != nil {
 						return "", err
 					}
@@ -559,7 +569,7 @@ func (t *TypeScriptify) convertType(typeOf golangType, customCode map[string]str
 					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
 				}
 			} else { // Simple field:
-				err = builder.AddSimpleField(jsonFieldName, field, typeOf.TSType, typeOf.TSTransform)
+				err = builder.AddSimpleField(jsonFieldName, field)
 			}
 			if err != nil {
 				return "", err
@@ -644,14 +654,9 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
-func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField, customType, customTransform *string) error {
+func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {
 	fieldType, kind := field.Type.Name(), field.Type.Kind()
 	customTSType := field.Tag.Get(tsType)
-	if customType != nil {
-		// value explicitely set, override the value
-		// from the tags
-		customTSType = *customType
-	}
 
 	typeScriptType := t.types[kind]
 	if len(customTSType) > 0 {
@@ -659,11 +664,6 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 	}
 
 	customTransformation := field.Tag.Get(tsTransformTag)
-	if customTransform != nil {
-		// value explicitely set, override the value
-		// from the tags
-		customTransformation = *customTransform
-	}
 
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")

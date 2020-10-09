@@ -240,23 +240,23 @@ converter.AddImport("import Decimal from 'decimal.js'")
 
 This will put your import on top of the generated file.
 
-Additionally, you can pass optional arguments to `.Add` that map to `ts_type` and `ts_transform`:
+Additionally, you can tell the library to automatically use a given Typescript type and custom transformation for a type:
 
 ```golang
 converter := typescriptify.New()
-converter.Add(time.Time{}, "Date", "new Date(__VALUE__)")
+converter.ManageType(time.Time{}, "Date", "new Date(__VALUE__)")
 ```
 
 This is how now `time.Time` is manage in the library by default.
 
-If you only want to change `ts_transform` but not `ts_type` you can pass an empty string:
+If you only want to change `ts_transform` but not `ts_type`, you can pass an empty string:
 
 ```golang
 converter := typescriptify.New()
-converter.Add(time.Time{}, "", "new Date(__VALUE__)")
+converter.ManageType(time.Time{}, "", "new Date(__VALUE__)")
 ```
 
-Calling `.Add` multiple times with the same type overrides previous additions.
+Calling `.ManageType` multiple times with the same type overrides previous additions.
 
 ## Enums
 
