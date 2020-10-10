@@ -35,6 +35,13 @@ const (
 }`
 )
 
+type StructType struct {
+	Type reflect.Type
+}
+type EnumType struct {
+	Type reflect.Type
+}
+
 type enumElement struct {
 	value interface{}
 	name  string
@@ -51,8 +58,8 @@ type TypeScriptify struct {
 	CreateInterface   bool
 	customImports     []string
 
-	golangTypes []reflect.Type
-	enumTypes   []reflect.Type
+	structTypes []StructType
+	enumTypes   []EnumType
 	enums       map[reflect.Type][]enumElement
 	kinds       map[reflect.Kind]string
 
@@ -159,7 +166,7 @@ func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 }
 
 func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
-	t.golangTypes = append(t.golangTypes, typeOf)
+	t.structTypes = append(t.structTypes, StructType{Type: typeOf})
 	return t
 }
 
@@ -225,7 +232,7 @@ func (t *TypeScriptify) AddEnum(values interface{}) *TypeScriptify {
 	}
 	ty := reflect.TypeOf(elements[0].value)
 	t.enums[ty] = elements
-	t.enumTypes = append(t.enumTypes, ty)
+	t.enumTypes = append(t.enumTypes, EnumType{Type: ty})
 
 	return t
 }
@@ -247,18 +254,17 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 		}
 	}
 
-	for _, typeof := range t.enumTypes {
-		elements := t.enums[typeof]
-		typeScriptCode, err := t.convertEnum(typeof, elements)
+	for _, enumTyp := range t.enumTypes {
+		elements := t.enums[enumTyp.Type]
+		typeScriptCode, err := t.convertEnum(enumTyp.Type, elements)
 		if err != nil {
 			return "", err
 		}
 		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
 	}
 
-	for _, typeof := range t.golangTypes {
-
-		typeScriptCode, err := t.convertType(typeof, customCode)
+	for _, strctTyp := range t.structTypes {
+		typeScriptCode, err := t.convertType(strctTyp.Type, customCode)
 		if err != nil {
 			return "", err
 		}
