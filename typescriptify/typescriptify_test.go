@@ -399,6 +399,38 @@ func TestDate(t *testing.T) {
 	})
 }
 
+func TestDateWithoutTags(t *testing.T) {
+	t.Parallel()
+	type TestCustomType struct {
+		Time time.Time `json:"time"`
+	}
+
+	converter := New()
+	converter.Add(NewStruct(TestCustomType{}).WithFieldOpts(time.Time{}, FieldOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"}))
+	converter.CreateFromMethod = true
+	converter.BackupDir = ""
+
+	desiredResult := `export class TestCustomType {
+	time: Date;
+
+    static createFrom(source: any = {}) {
+        return new TestCustomType(source);
+	}
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.time = new Date(source["time"]);
+    }
+}`
+
+	jsn := jsonizeOrPanic(TestCustomType{Time: time.Date(2020, 10, 9, 8, 9, 0, 0, time.UTC)})
+	testConverter(t, converter, true, desiredResult, []string{
+		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time instanceof Date`,
+		//`console.log(new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON())`,
+		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON() === "2020-10-09T08:09:00.000Z"`,
+	})
+}
+
 func TestRecursive(t *testing.T) {
 	t.Parallel()
 	type Test struct {

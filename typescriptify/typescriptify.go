@@ -44,6 +44,27 @@ type StructType struct {
 	Type         reflect.Type
 	FieldOptions map[reflect.Type]FieldOptions
 }
+
+func NewStruct(i interface{}) *StructType {
+	return &StructType{
+		Type: reflect.TypeOf(i),
+	}
+}
+
+func (st *StructType) WithFieldOpts(i interface{}, opts FieldOptions) *StructType {
+	if st.FieldOptions == nil {
+		st.FieldOptions = map[reflect.Type]FieldOptions{}
+	}
+	var typ reflect.Type
+	if ty, is := i.(reflect.Type); is {
+		typ = ty
+	} else {
+		typ = reflect.TypeOf(i)
+	}
+	st.FieldOptions[typ] = opts
+	return st
+}
+
 type EnumType struct {
 	Type reflect.Type
 }
@@ -410,10 +431,27 @@ func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement)
 }
 
 func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.StructField) FieldOptions {
-	/*
-		Here find the struct in t.structTypes and get a custom FieldOptions or use the one defined with tags:
-	*/
-	return FieldOptions{TSTransform: field.Tag.Get(tsTransformTag), TSType: field.Tag.Get(tsType)}
+	// By default use options defined by tags:
+	opts := FieldOptions{TSTransform: field.Tag.Get(tsTransformTag), TSType: field.Tag.Get(tsType)}
+
+	// But there is maybe an struct-specific override:
+	for _, strct := range t.structTypes {
+		if strct.FieldOptions == nil {
+			continue
+		}
+		if strct.Type == structType {
+			if fldOpts, found := strct.FieldOptions[field.Type]; found {
+				if fldOpts.TSTransform != "" {
+					opts.TSTransform = fldOpts.TSTransform
+				}
+				if fldOpts.TSType != "" {
+					opts.TSType = fldOpts.TSType
+				}
+			}
+		}
+	}
+
+	return opts
 }
 
 func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
