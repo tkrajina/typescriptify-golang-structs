@@ -35,8 +35,14 @@ const (
 }`
 )
 
+type FieldOptions struct {
+	TSType      string
+	TSTransform string
+}
+
 type StructType struct {
-	Type reflect.Type
+	Type         reflect.Type
+	FieldOptions map[reflect.Type]FieldOptions
 }
 type EnumType struct {
 	Type reflect.Type
@@ -161,7 +167,17 @@ func (t *TypeScriptify) WithSuffix(s string) *TypeScriptify {
 }
 
 func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
-	t.AddType(reflect.TypeOf(obj))
+	switch ty := obj.(type) {
+	case StructType:
+		t.structTypes = append(t.structTypes, ty)
+		break
+	case *StructType:
+		t.structTypes = append(t.structTypes, *ty)
+		break
+	default:
+		t.AddType(reflect.TypeOf(obj))
+		break
+	}
 	return t
 }
 
@@ -393,6 +409,13 @@ func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement)
 	return result, nil
 }
 
+func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.StructField) FieldOptions {
+	/*
+		Here find the struct in t.structTypes and get a custom FieldOptions or use the one defined with tags:
+	*/
+	return FieldOptions{TSTransform: field.Tag.Get(tsTransformTag), TSType: field.Tag.Get(tsType)}
+}
+
 func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
@@ -445,14 +468,13 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		}
 		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
 			var err error
-			customTransformation := field.Tag.Get(tsTransformTag)
-			customTSType := field.Tag.Get(tsType)
-			if customTransformation != "" {
-				err = builder.AddSimpleField(jsonFieldName, field)
+			fldOpts := t.getFieldOptions(typeOf, field)
+			if fldOpts.TSTransform != "" {
+				err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 			} else if _, isEnum := t.enums[field.Type]; isEnum {
 				builder.AddEnumField(jsonFieldName, field)
-			} else if customTSType != "" { // Struct:
-				err = builder.AddSimpleField(jsonFieldName, field)
+			} else if fldOpts.TSType != "" { // Struct:
+				err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 			} else if field.Type.Kind() == reflect.Struct { // Struct:
 				typeScriptChunk, err := t.convertType(field.Type, customCode)
 				if err != nil {
@@ -520,10 +542,10 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					}
 					builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
 				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth)
+					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth, fldOpts)
 				}
 			} else { // Simple field:
-				err = builder.AddSimpleField(jsonFieldName, field)
+				err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 			}
 			if err != nil {
 				return "", err
@@ -587,15 +609,14 @@ type typeScriptClassBuilder struct {
 	prefix, suffix       string
 }
 
-func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField, arrayDepth int) error {
+func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField, arrayDepth int, opts FieldOptions) error {
 	fieldType, kind := field.Type.Elem().Name(), field.Type.Elem().Kind()
 	typeScriptType := t.types[kind]
 
 	if len(fieldName) > 0 {
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
-		customTSType := field.Tag.Get(tsType)
-		if len(customTSType) > 0 {
-			t.addField(fieldName, customTSType)
+		if len(opts.TSType) > 0 {
+			t.addField(fieldName, opts.TSType)
 			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 			return nil
 		} else if len(typeScriptType) > 0 {
@@ -608,25 +629,22 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
 }
 
-func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField) error {
+func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField, opts FieldOptions) error {
 	fieldType, kind := field.Type.Name(), field.Type.Kind()
-	customTSType := field.Tag.Get(tsType)
 
 	typeScriptType := t.types[kind]
-	if len(customTSType) > 0 {
-		typeScriptType = customTSType
+	if len(opts.TSType) > 0 {
+		typeScriptType = opts.TSType
 	}
-
-	customTransformation := field.Tag.Get(tsTransformTag)
 
 	if len(typeScriptType) > 0 && len(fieldName) > 0 {
 		strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
 		t.addField(fieldName, typeScriptType)
-		if customTransformation == "" {
+		if opts.TSTransform == "" {
 			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 		} else {
 			val := fmt.Sprintf(`source["%s"]`, strippedFieldName)
-			expression := strings.Replace(customTransformation, "__VALUE__", val, -1)
+			expression := strings.Replace(opts.TSTransform, "__VALUE__", val, -1)
 			t.addInitializerFieldLine(strippedFieldName, expression)
 		}
 		return nil
