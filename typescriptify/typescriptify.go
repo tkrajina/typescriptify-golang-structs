@@ -35,11 +35,13 @@ const (
 }`
 )
 
+// FieldOptions overrides options set by `ts_*` tags.
 type FieldOptions struct {
 	TSType      string
 	TSTransform string
 }
 
+// StructType stores settings for transforming one Golang struct.
 type StructType struct {
 	Type         reflect.Type
 	FieldOptions map[reflect.Type]FieldOptions
@@ -89,6 +91,8 @@ type TypeScriptify struct {
 	enumTypes   []EnumType
 	enums       map[reflect.Type][]enumElement
 	kinds       map[reflect.Kind]string
+
+	fieldOptions map[reflect.Type]FieldOptions
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
@@ -157,6 +161,24 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
+// WithFieldOpts can define custom options for fields of a specified type.
+//
+// This can be used instead of setting ts_type and ts_transform for all fields of a certain type.
+func (t *TypeScriptify) WithFieldOpts(fld interface{}, opts FieldOptions) *TypeScriptify {
+	var typ reflect.Type
+	switch t := fld.(type) {
+	case reflect.Type:
+		typ = t
+	default:
+		typ = reflect.TypeOf(fld)
+	}
+	if t.fieldOptions == nil {
+		t.fieldOptions = map[reflect.Type]FieldOptions{}
+	}
+	t.fieldOptions[typ] = opts
+	return t
+}
+
 func (t *TypeScriptify) WithCreateFromMethod(b bool) *TypeScriptify {
 	t.CreateFromMethod = b
 	return t
@@ -194,6 +216,9 @@ func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 		break
 	case *StructType:
 		t.structTypes = append(t.structTypes, *ty)
+		break
+	case reflect.Type:
+		t.AddType(ty)
 		break
 	default:
 		t.AddType(reflect.TypeOf(obj))
@@ -434,6 +459,8 @@ func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.S
 	// By default use options defined by tags:
 	opts := FieldOptions{TSTransform: field.Tag.Get(tsTransformTag), TSType: field.Tag.Get(tsType)}
 
+	overrides := []FieldOptions{}
+
 	// But there is maybe an struct-specific override:
 	for _, strct := range t.structTypes {
 		if strct.FieldOptions == nil {
@@ -441,13 +468,21 @@ func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.S
 		}
 		if strct.Type == structType {
 			if fldOpts, found := strct.FieldOptions[field.Type]; found {
-				if fldOpts.TSTransform != "" {
-					opts.TSTransform = fldOpts.TSTransform
-				}
-				if fldOpts.TSType != "" {
-					opts.TSType = fldOpts.TSType
-				}
+				overrides = append(overrides, fldOpts)
 			}
+		}
+	}
+
+	if fldOpts, found := t.fieldOptions[field.Type]; found {
+		overrides = append(overrides, fldOpts)
+	}
+
+	for _, o := range overrides {
+		if o.TSTransform != "" {
+			opts.TSTransform = o.TSTransform
+		}
+		if o.TSType != "" {
+			opts.TSType = o.TSType
 		}
 	}
 

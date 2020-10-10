@@ -405,12 +405,21 @@ func TestDateWithoutTags(t *testing.T) {
 		Time time.Time `json:"time"`
 	}
 
-	converter := New()
-	converter.Add(NewStruct(TestCustomType{}).WithFieldOpts(time.Time{}, FieldOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"}))
-	converter.CreateFromMethod = true
-	converter.BackupDir = ""
+	// Test with custom field options defined per-one-struct:
+	converter1 := New()
+	converter1.Add(NewStruct(TestCustomType{}).WithFieldOpts(time.Time{}, FieldOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"}))
+	converter1.CreateFromMethod = true
+	converter1.BackupDir = ""
 
-	desiredResult := `export class TestCustomType {
+	// Test with custom field options defined globally:
+	converter2 := New()
+	converter2.Add(reflect.TypeOf(TestCustomType{}))
+	converter2.WithFieldOpts(time.Time{}, FieldOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
+	converter2.CreateFromMethod = true
+	converter2.BackupDir = ""
+
+	for _, converter := range []*TypeScriptify{converter1, converter2} {
+		desiredResult := `export class TestCustomType {
 	time: Date;
 
     static createFrom(source: any = {}) {
@@ -423,12 +432,13 @@ func TestDateWithoutTags(t *testing.T) {
     }
 }`
 
-	jsn := jsonizeOrPanic(TestCustomType{Time: time.Date(2020, 10, 9, 8, 9, 0, 0, time.UTC)})
-	testConverter(t, converter, true, desiredResult, []string{
-		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time instanceof Date`,
-		//`console.log(new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON())`,
-		`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON() === "2020-10-09T08:09:00.000Z"`,
-	})
+		jsn := jsonizeOrPanic(TestCustomType{Time: time.Date(2020, 10, 9, 8, 9, 0, 0, time.UTC)})
+		testConverter(t, converter, true, desiredResult, []string{
+			`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time instanceof Date`,
+			//`console.log(new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON())`,
+			`new TestCustomType(` + jsonizeOrPanic(jsn) + `).time.toJSON() === "2020-10-09T08:09:00.000Z"`,
+		})
+	}
 }
 
 func TestRecursive(t *testing.T) {
