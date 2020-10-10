@@ -414,7 +414,7 @@ func TestDateWithoutTags(t *testing.T) {
 	// Test with custom field options defined globally:
 	converter2 := New()
 	converter2.Add(reflect.TypeOf(TestCustomType{}))
-	converter2.WithFieldOpts(time.Time{}, FieldOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
+	converter2.WithFieldTypeOpts(time.Time{}, FieldOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
 	converter2.CreateFromMethod = true
 	converter2.BackupDir = ""
 

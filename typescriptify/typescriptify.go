@@ -92,7 +92,7 @@ type TypeScriptify struct {
 	enums       map[reflect.Type][]enumElement
 	kinds       map[reflect.Kind]string
 
-	fieldOptions map[reflect.Type]FieldOptions
+	fieldTypeOptions map[reflect.Type]FieldOptions
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
@@ -161,10 +161,10 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
-// WithFieldOpts can define custom options for fields of a specified type.
+// WithFieldTypeOpts can define custom options for fields of a specified type.
 //
 // This can be used instead of setting ts_type and ts_transform for all fields of a certain type.
-func (t *TypeScriptify) WithFieldOpts(fld interface{}, opts FieldOptions) *TypeScriptify {
+func (t *TypeScriptify) WithFieldTypeOpts(fld interface{}, opts FieldOptions) *TypeScriptify {
 	var typ reflect.Type
 	switch t := fld.(type) {
 	case reflect.Type:
@@ -172,10 +172,10 @@ func (t *TypeScriptify) WithFieldOpts(fld interface{}, opts FieldOptions) *TypeS
 	default:
 		typ = reflect.TypeOf(fld)
 	}
-	if t.fieldOptions == nil {
-		t.fieldOptions = map[reflect.Type]FieldOptions{}
+	if t.fieldTypeOptions == nil {
+		t.fieldTypeOptions = map[reflect.Type]FieldOptions{}
 	}
-	t.fieldOptions[typ] = opts
+	t.fieldTypeOptions[typ] = opts
 	return t
 }
 
@@ -473,7 +473,7 @@ func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.S
 		}
 	}
 
-	if fldOpts, found := t.fieldOptions[field.Type]; found {
+	if fldOpts, found := t.fieldTypeOptions[field.Type]; found {
 		overrides = append(overrides, fldOpts)
 	}
 
