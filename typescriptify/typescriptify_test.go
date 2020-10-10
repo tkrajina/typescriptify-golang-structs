@@ -307,7 +307,7 @@ func testConverter(t *testing.T, converter *TypeScriptify, strictMode bool, desi
 			if assert.Equal(t, strings.TrimSpace(expectedLine), strings.TrimSpace(gotLine), "line #%d", 1+i) {
 				fmt.Printf("OK:       %s\n", gotLine)
 			} else {
-				t.Fail()
+				t.FailNow()
 			}
 		}
 	}
