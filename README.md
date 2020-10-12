@@ -282,7 +282,7 @@ converter := New()
 converter.ManageType(time.Time{}, TypeOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
 ```
 
-This is how now `time.Time` is manages in the library by default.
+This is how now `time.Time` is managed in the library by default.
 
 If you only want to change `ts_transform` but not `ts_type`, you can pass an empty string:
 
