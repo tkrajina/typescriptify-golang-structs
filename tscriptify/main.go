@@ -74,9 +74,7 @@ func main() {
 			if err != nil {
 				panic(fmt.Sprintf("Error loading/parsing golang file %s: %s", structOrGoFile, err.Error()))
 			}
-			for _, s := range fileStructs {
-				structs = append(structs, s)
-			}
+			structs = append(structs, fileStructs...)
 		} else {
 			structs = append(structs, structOrGoFile)
 		}
