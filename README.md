@@ -273,6 +273,15 @@ converter.AddImport("import Decimal from 'decimal.js'")
 
 This will put your import on top of the generated file.
 
+## Global custom types
+
+When using `ts_type` and `ts_transform` multiple times for the same type, you can set those globally:
+
+```golang
+converter := New()
+converter.ManageType(time.Time{}, TypeOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
+```
+
 ## Enums
 
 There are two ways to create enums. 

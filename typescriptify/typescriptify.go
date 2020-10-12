@@ -35,8 +35,8 @@ const (
 }`
 )
 
-// FieldOptions overrides options set by `ts_*` tags.
-type FieldOptions struct {
+// TypeOptions overrides options set by `ts_*` tags.
+type TypeOptions struct {
 	TSType      string
 	TSTransform string
 }
@@ -44,7 +44,7 @@ type FieldOptions struct {
 // StructType stores settings for transforming one Golang struct.
 type StructType struct {
 	Type         reflect.Type
-	FieldOptions map[reflect.Type]FieldOptions
+	FieldOptions map[reflect.Type]TypeOptions
 }
 
 func NewStruct(i interface{}) *StructType {
@@ -53,9 +53,9 @@ func NewStruct(i interface{}) *StructType {
 	}
 }
 
-func (st *StructType) WithFieldOpts(i interface{}, opts FieldOptions) *StructType {
+func (st *StructType) WithFieldOpts(i interface{}, opts TypeOptions) *StructType {
 	if st.FieldOptions == nil {
-		st.FieldOptions = map[reflect.Type]FieldOptions{}
+		st.FieldOptions = map[reflect.Type]TypeOptions{}
 	}
 	var typ reflect.Type
 	if ty, is := i.(reflect.Type); is {
@@ -92,7 +92,7 @@ type TypeScriptify struct {
 	enums       map[reflect.Type][]enumElement
 	kinds       map[reflect.Kind]string
 
-	fieldTypeOptions map[reflect.Type]FieldOptions
+	fieldTypeOptions map[reflect.Type]TypeOptions
 
 	// throwaway, used when converting
 	alreadyConverted map[reflect.Type]bool
@@ -161,10 +161,10 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
-// WithFieldTypeOpts can define custom options for fields of a specified type.
+// ManageType can define custom options for fields of a specified type.
 //
 // This can be used instead of setting ts_type and ts_transform for all fields of a certain type.
-func (t *TypeScriptify) WithFieldTypeOpts(fld interface{}, opts FieldOptions) *TypeScriptify {
+func (t *TypeScriptify) ManageType(fld interface{}, opts TypeOptions) *TypeScriptify {
 	var typ reflect.Type
 	switch t := fld.(type) {
 	case reflect.Type:
@@ -173,7 +173,7 @@ func (t *TypeScriptify) WithFieldTypeOpts(fld interface{}, opts FieldOptions) *T
 		typ = reflect.TypeOf(fld)
 	}
 	if t.fieldTypeOptions == nil {
-		t.fieldTypeOptions = map[reflect.Type]FieldOptions{}
+		t.fieldTypeOptions = map[reflect.Type]TypeOptions{}
 	}
 	t.fieldTypeOptions[typ] = opts
 	return t
@@ -213,16 +213,12 @@ func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 	switch ty := obj.(type) {
 	case StructType:
 		t.structTypes = append(t.structTypes, ty)
-		break
 	case *StructType:
 		t.structTypes = append(t.structTypes, *ty)
-		break
 	case reflect.Type:
 		t.AddType(ty)
-		break
 	default:
 		t.AddType(reflect.TypeOf(obj))
-		break
 	}
 	return t
 }
@@ -458,11 +454,11 @@ func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement)
 	return result, nil
 }
 
-func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.StructField) FieldOptions {
+func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.StructField) TypeOptions {
 	// By default use options defined by tags:
-	opts := FieldOptions{TSTransform: field.Tag.Get(tsTransformTag), TSType: field.Tag.Get(tsType)}
+	opts := TypeOptions{TSTransform: field.Tag.Get(tsTransformTag), TSType: field.Tag.Get(tsType)}
 
-	overrides := []FieldOptions{}
+	overrides := []TypeOptions{}
 
 	// But there is maybe an struct-specific override:
 	for _, strct := range t.structTypes {
@@ -685,7 +681,7 @@ type typeScriptClassBuilder struct {
 	prefix, suffix       string
 }
 
-func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField, arrayDepth int, opts FieldOptions) error {
+func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field reflect.StructField, arrayDepth int, opts TypeOptions) error {
 	fieldType, kind := field.Type.Elem().Name(), field.Type.Elem().Kind()
 	typeScriptType := t.types[kind]
 
@@ -705,7 +701,7 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 	return fmt.Errorf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType)
 }
 
-func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField, opts FieldOptions) error {
+func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField, opts TypeOptions) error {
 	fieldType, kind := field.Type.Name(), field.Type.Kind()
 
 	typeScriptType := t.types[kind]
