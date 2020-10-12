@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.1
+
+- custom types (insted of setting `ts_type` and `ts_transform` every time)
+
 ## v0.1.0
 
 - simplified conversion of objects
