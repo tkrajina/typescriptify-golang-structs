@@ -241,7 +241,7 @@ export class Data {
 ```
 
 If the JSON field needs some special handling before converting it to a javascript object, use `ts_transform`.
-For example, Dates can be handles this way:
+For example:
 
 ```golang
 type Data struct {
@@ -275,12 +275,16 @@ This will put your import on top of the generated file.
 
 ## Global custom types
 
-When using `ts_type` and `ts_transform` multiple times for the same type, you can set those globally:
+Additionally, you can tell the library to automatically use a given Typescript type and custom transformation for a type:
 
 ```golang
 converter := New()
 converter.ManageType(time.Time{}, TypeOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
 ```
+
+This is how now `time.Time` is manages in the library by default.
+
+If you only want to change `ts_transform` but not `ts_type`, you can pass an empty string:
 
 ## Enums
 

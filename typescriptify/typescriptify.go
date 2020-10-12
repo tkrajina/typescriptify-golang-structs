@@ -103,27 +103,27 @@ func New() *TypeScriptify {
 	result.Indent = "\t"
 	result.BackupDir = "."
 
-	types := make(map[reflect.Kind]string)
+	kinds := make(map[reflect.Kind]string)
 
-	types[reflect.Bool] = "boolean"
-	types[reflect.Interface] = "any"
+	kinds[reflect.Bool] = "boolean"
+	kinds[reflect.Interface] = "any"
 
-	types[reflect.Int] = "number"
-	types[reflect.Int8] = "number"
-	types[reflect.Int16] = "number"
-	types[reflect.Int32] = "number"
-	types[reflect.Int64] = "number"
-	types[reflect.Uint] = "number"
-	types[reflect.Uint8] = "number"
-	types[reflect.Uint16] = "number"
-	types[reflect.Uint32] = "number"
-	types[reflect.Uint64] = "number"
-	types[reflect.Float32] = "number"
-	types[reflect.Float64] = "number"
+	kinds[reflect.Int] = "number"
+	kinds[reflect.Int8] = "number"
+	kinds[reflect.Int16] = "number"
+	kinds[reflect.Int32] = "number"
+	kinds[reflect.Int64] = "number"
+	kinds[reflect.Uint] = "number"
+	kinds[reflect.Uint8] = "number"
+	kinds[reflect.Uint16] = "number"
+	kinds[reflect.Uint32] = "number"
+	kinds[reflect.Uint64] = "number"
+	kinds[reflect.Float32] = "number"
+	kinds[reflect.Float64] = "number"
 
-	types[reflect.String] = "string"
+	kinds[reflect.String] = "string"
 
-	result.kinds = types
+	result.kinds = kinds
 
 	result.Indent = "    "
 	result.CreateFromMethod = true
@@ -492,6 +492,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
+
 	t.alreadyConverted[typeOf] = true
 
 	entityName := t.Prefix + typeOf.Name() + t.Suffix
