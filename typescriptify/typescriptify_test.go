@@ -324,12 +324,12 @@ func testTypescriptExpression(t *testing.T, strictMode bool, baseScript string, 
 	assert.Nil(t, err)
 	assert.NotNil(t, f)
 
-	f.WriteString(baseScript)
-	f.WriteString("\n")
+	_, _ = f.WriteString(baseScript)
+	_, _ = f.WriteString("\n")
 	for n, expr := range tsExpressionAndDesiredResults {
-		f.WriteString("// " + expr + "\n")
-		f.WriteString(`if (` + expr + `) { console.log("#` + fmt.Sprint(1+n) + ` OK") } else { throw new Error() }`)
-		f.WriteString("\n\n")
+		_, _ = f.WriteString("// " + expr + "\n")
+		_, _ = f.WriteString(`if (` + expr + `) { console.log("#` + fmt.Sprint(1+n) + ` OK") } else { throw new Error() }`)
+		_, _ = f.WriteString("\n\n")
 	}
 
 	fmt.Println("tmp ts: ", f.Name())

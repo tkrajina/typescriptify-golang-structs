@@ -419,9 +419,12 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 		return err
 	}
 
-	f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n")
-
-	f.WriteString(converted)
+	if _, err := f.WriteString("/* Do not change, this code is generated from Golang structs */\n\n"); err != nil {
+		return err
+	}
+	if _, err := f.WriteString(converted); err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}
@@ -699,7 +702,7 @@ func (t *typeScriptClassBuilder) AddSimpleArrayField(fieldName string, field ref
 		}
 	}
 
-	return errors.New(fmt.Sprintf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType))
+	return fmt.Errorf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType)
 }
 
 func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.StructField, opts FieldOptions) error {
