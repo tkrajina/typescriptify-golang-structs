@@ -85,6 +85,7 @@ type TypeScriptify struct {
 	BackupDir         string // If empty no backup
 	DontExport        bool
 	CreateInterface   bool
+	Debug             bool
 	customImports     []string
 
 	structTypes []StructType
@@ -159,6 +160,12 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	}
 
 	return fields
+}
+
+func (ts TypeScriptify) logf(s string, args ...interface{}) {
+	if ts.Debug {
+		fmt.Printf(s+"\n", args...)
+	}
 }
 
 // ManageType can define custom options for fields of a specified type.
@@ -433,6 +440,7 @@ type TSNamer interface {
 }
 
 func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement) (string, error) {
+	t.logf("Converting enum %s", typeOf.String())
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
@@ -489,6 +497,7 @@ func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.S
 }
 
 func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
+	t.logf("Converting struct %s", typeOf.String())
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
@@ -549,6 +558,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			} else if fldOpts.TSType != "" { // Struct:
 				err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 			} else if field.Type.Kind() == reflect.Struct { // Struct:
+				t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
 				typeScriptChunk, err := t.convertType(field.Type, customCode)
 				if err != nil {
 					return "", err
@@ -567,6 +577,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					keyTypeToConvert = field.Type.Key().Elem()
 				}
 				if keyTypeToConvert != nil {
+					t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
 					typeScriptChunk, err := t.convertType(keyTypeToConvert, customCode)
 					if err != nil {
 						return "", err
@@ -584,6 +595,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 					valueTypeToConvert = field.Type.Elem().Elem()
 				}
 				if valueTypeToConvert != nil {
+					t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
 					typeScriptChunk, err := t.convertType(valueTypeToConvert, customCode)
 					if err != nil {
 						return "", err
@@ -606,6 +618,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				}
 
 				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
+					t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
 					typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
 					if err != nil {
 						return "", err
