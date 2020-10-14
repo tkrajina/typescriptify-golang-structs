@@ -617,7 +617,6 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 
 			builder.AddMapField(jsonFieldName, field)
 		} else if field.Type.Kind() == reflect.Slice { // Slice:
-			t.logf("- slice field %s.%s", typeOf.Name(), field.Name)
 			if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
 				field.Type = field.Type.Elem()
 			}
@@ -629,7 +628,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			}
 
 			if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-				t.logf("- struct %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
+				t.logf("- struct slice %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
 				typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
 				if err != nil {
 					return "", err
@@ -639,6 +638,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				}
 				builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
 			} else { // Slice of simple fields:
+				t.logf("- slice field %s.%s", typeOf.Name(), field.Name)
 				err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth, fldOpts)
 			}
 		} else { // Simple field:
