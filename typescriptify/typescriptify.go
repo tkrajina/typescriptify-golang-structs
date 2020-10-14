@@ -493,11 +493,36 @@ func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.S
 	return opts
 }
 
+func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) string {
+	jsonFieldName := ""
+	jsonTag := field.Tag.Get("json")
+	if len(jsonTag) > 0 {
+		jsonTagParts := strings.Split(jsonTag, ",")
+		if len(jsonTagParts) > 0 {
+			jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
+		}
+		hasOmitEmpty := false
+		for _, t := range jsonTagParts {
+			if t == "" {
+				break
+			}
+			if t == "omitempty" {
+				hasOmitEmpty = true
+				break
+			}
+		}
+		if isPtr || hasOmitEmpty {
+			jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
+		}
+	}
+	return jsonFieldName
+}
+
 func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
-	t.logf("Converting struct %s", typeOf.String())
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
+	t.logf("Converting type %s", typeOf.String())
 
 	t.alreadyConverted[typeOf] = true
 
@@ -524,115 +549,101 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		if isPtr {
 			field.Type = field.Type.Elem()
 		}
-		jsonTag := field.Tag.Get("json")
-		jsonFieldName := ""
-		if len(jsonTag) > 0 {
-			jsonTagParts := strings.Split(jsonTag, ",")
-			if len(jsonTagParts) > 0 {
-				jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
-			}
-			hasOmitEmpty := false
-			for _, t := range jsonTagParts {
-				if t == "" {
-					break
-				}
-				if t == "omitempty" {
-					hasOmitEmpty = true
-					break
-				}
-			}
-			if isPtr || hasOmitEmpty {
-				jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
-			}
+		jsonFieldName := t.getJSONFieldName(field, isPtr)
+		if len(jsonFieldName) == 0 || jsonFieldName == "-" {
+			continue
 		}
-		if len(jsonFieldName) > 0 && jsonFieldName != "-" {
-			var err error
-			fldOpts := t.getFieldOptions(typeOf, field)
-			if fldOpts.TSTransform != "" {
-				err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
-			} else if _, isEnum := t.enums[field.Type]; isEnum {
-				builder.AddEnumField(jsonFieldName, field)
-			} else if fldOpts.TSType != "" { // Struct:
-				err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
-			} else if field.Type.Kind() == reflect.Struct { // Struct:
-				t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
-				typeScriptChunk, err := t.convertType(field.Type, customCode)
+
+		var err error
+		fldOpts := t.getFieldOptions(typeOf, field)
+		if fldOpts.TSTransform != "" {
+			t.logf("- simple field %s.%s", typeOf.Name(), field.Name)
+			err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
+		} else if _, isEnum := t.enums[field.Type]; isEnum {
+			t.logf("- enum field %s.%s", typeOf.Name(), field.Name)
+			builder.AddEnumField(jsonFieldName, field)
+		} else if fldOpts.TSType != "" { // Struct:
+			t.logf("- simple field %s.%s", typeOf.Name(), field.Name)
+			err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
+		} else if field.Type.Kind() == reflect.Struct { // Struct:
+			t.logf("- struct %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
+			typeScriptChunk, err := t.convertType(field.Type, customCode)
+			if err != nil {
+				return "", err
+			}
+			if typeScriptChunk != "" {
+				result = typeScriptChunk + "\n" + result
+			}
+			builder.AddStructField(jsonFieldName, field)
+		} else if field.Type.Kind() == reflect.Map {
+			t.logf("- map field %s.%s", typeOf.Name(), field.Name)
+			// Also convert map key types if needed
+			var keyTypeToConvert reflect.Type
+			switch field.Type.Key().Kind() {
+			case reflect.Struct:
+				keyTypeToConvert = field.Type.Key()
+			case reflect.Ptr:
+				keyTypeToConvert = field.Type.Key().Elem()
+			}
+			if keyTypeToConvert != nil {
+				typeScriptChunk, err := t.convertType(keyTypeToConvert, customCode)
 				if err != nil {
 					return "", err
 				}
 				if typeScriptChunk != "" {
 					result = typeScriptChunk + "\n" + result
 				}
-				builder.AddStructField(jsonFieldName, field)
-			} else if field.Type.Kind() == reflect.Map {
-				// Also convert map key types if needed
-				var keyTypeToConvert reflect.Type
-				switch field.Type.Key().Kind() {
-				case reflect.Struct:
-					keyTypeToConvert = field.Type.Key()
-				case reflect.Ptr:
-					keyTypeToConvert = field.Type.Key().Elem()
-				}
-				if keyTypeToConvert != nil {
-					t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
-					typeScriptChunk, err := t.convertType(keyTypeToConvert, customCode)
-					if err != nil {
-						return "", err
-					}
-					if typeScriptChunk != "" {
-						result = typeScriptChunk + "\n" + result
-					}
-				}
-				// Also convert map value types if needed
-				var valueTypeToConvert reflect.Type
-				switch field.Type.Elem().Kind() {
-				case reflect.Struct:
-					valueTypeToConvert = field.Type.Elem()
-				case reflect.Ptr:
-					valueTypeToConvert = field.Type.Elem().Elem()
-				}
-				if valueTypeToConvert != nil {
-					t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
-					typeScriptChunk, err := t.convertType(valueTypeToConvert, customCode)
-					if err != nil {
-						return "", err
-					}
-					if typeScriptChunk != "" {
-						result = typeScriptChunk + "\n" + result
-					}
-				}
-
-				builder.AddMapField(jsonFieldName, field)
-			} else if field.Type.Kind() == reflect.Slice { // Slice:
-				if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
-					field.Type = field.Type.Elem()
-				}
-
-				arrayDepth := 1
-				for field.Type.Elem().Kind() == reflect.Slice { // Slice of slices:
-					field.Type = field.Type.Elem()
-					arrayDepth++
-				}
-
-				if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-					t.logf("Struct %s.%s (%s) => convert", typeOf.Name(), field.Name, field.Type.String())
-					typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
-					if err != nil {
-						return "", err
-					}
-					if typeScriptChunk != "" {
-						result = typeScriptChunk + "\n" + result
-					}
-					builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
-				} else { // Slice of simple fields:
-					err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth, fldOpts)
-				}
-			} else { // Simple field:
-				err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 			}
-			if err != nil {
-				return "", err
+			// Also convert map value types if needed
+			var valueTypeToConvert reflect.Type
+			switch field.Type.Elem().Kind() {
+			case reflect.Struct:
+				valueTypeToConvert = field.Type.Elem()
+			case reflect.Ptr:
+				valueTypeToConvert = field.Type.Elem().Elem()
 			}
+			if valueTypeToConvert != nil {
+				typeScriptChunk, err := t.convertType(valueTypeToConvert, customCode)
+				if err != nil {
+					return "", err
+				}
+				if typeScriptChunk != "" {
+					result = typeScriptChunk + "\n" + result
+				}
+			}
+
+			builder.AddMapField(jsonFieldName, field)
+		} else if field.Type.Kind() == reflect.Slice { // Slice:
+			t.logf("- slice field %s.%s", typeOf.Name(), field.Name)
+			if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
+				field.Type = field.Type.Elem()
+			}
+
+			arrayDepth := 1
+			for field.Type.Elem().Kind() == reflect.Slice { // Slice of slices:
+				field.Type = field.Type.Elem()
+				arrayDepth++
+			}
+
+			if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
+				t.logf("- struct %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
+				typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
+				if err != nil {
+					return "", err
+				}
+				if typeScriptChunk != "" {
+					result = typeScriptChunk + "\n" + result
+				}
+				builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
+			} else { // Slice of simple fields:
+				err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth, fldOpts)
+			}
+		} else { // Simple field:
+			t.logf("- simple field %s.%s", typeOf.Name(), field.Name)
+			err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
+		}
+		if err != nil {
+			return "", err
 		}
 	}
 

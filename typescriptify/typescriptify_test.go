@@ -373,7 +373,6 @@ func TestDate(t *testing.T) {
 	}
 
 	converter := New()
-	converter.Debug = true
 	converter.AddType(reflect.TypeOf(TestCustomType{}))
 	converter.CreateFromMethod = true
 	converter.BackupDir = ""
@@ -407,14 +406,12 @@ func TestDateWithoutTags(t *testing.T) {
 
 	// Test with custom field options defined per-one-struct:
 	converter1 := New()
-	converter1.Debug = true
 	converter1.Add(NewStruct(TestCustomType{}).WithFieldOpts(time.Time{}, TypeOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"}))
 	converter1.CreateFromMethod = true
 	converter1.BackupDir = ""
 
 	// Test with custom field options defined globally:
 	converter2 := New()
-	converter2.Debug = true
 	converter2.Add(reflect.TypeOf(TestCustomType{}))
 	converter2.ManageType(time.Time{}, TypeOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
 	converter2.CreateFromMethod = true
