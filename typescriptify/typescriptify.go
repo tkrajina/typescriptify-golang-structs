@@ -85,7 +85,6 @@ type TypeScriptify struct {
 	BackupDir         string // If empty no backup
 	DontExport        bool
 	CreateInterface   bool
-	Debug             bool
 	customImports     []string
 
 	structTypes []StructType
@@ -163,9 +162,7 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 }
 
 func (ts TypeScriptify) logf(s string, args ...interface{}) {
-	if ts.Debug {
-		fmt.Printf(s+"\n", args...)
-	}
+	fmt.Printf(strings.Repeat("\t", 0)+s+"\n", args...)
 }
 
 // ManageType can define custom options for fields of a specified type.
