@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.2
+
+- Log field and type creation to make the order (and why a type was converted) simpler to follow
+- Global custom types: Merge branch 'fix-33' of https://github.com/shackra/typescriptify-golang-structs into shackra-fix-33
+
 ## v0.1.1
 
 - custom types (insted of setting `ts_type` and `ts_transform` every time)
