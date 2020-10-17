@@ -164,8 +164,8 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
-func (ts TypeScriptify) logf(s string, args ...interface{}) {
-	fmt.Printf(strings.Repeat("\t", 0)+s+"\n", args...)
+func (ts TypeScriptify) logf(depth int, s string, args ...interface{}) {
+	fmt.Printf(strings.Repeat("   ", depth)+s+"\n", args...)
 }
 
 // ManageType can define custom options for fields of a specified type.
@@ -310,6 +310,7 @@ func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) *
 
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 	t.alreadyConverted = make(map[reflect.Type]bool)
+	depth := 0
 
 	result := ""
 	if len(t.customImports) > 0 {
@@ -321,7 +322,7 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 
 	for _, enumTyp := range t.enumTypes {
 		elements := t.enums[enumTyp.Type]
-		typeScriptCode, err := t.convertEnum(enumTyp.Type, elements)
+		typeScriptCode, err := t.convertEnum(depth, enumTyp.Type, elements)
 		if err != nil {
 			return "", err
 		}
@@ -329,7 +330,7 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 	}
 
 	for _, strctTyp := range t.structTypes {
-		typeScriptCode, err := t.convertType(strctTyp.Type, customCode)
+		typeScriptCode, err := t.convertType(depth, strctTyp.Type, customCode)
 		if err != nil {
 			return "", err
 		}
@@ -439,8 +440,8 @@ type TSNamer interface {
 	TSName() string
 }
 
-func (t *TypeScriptify) convertEnum(typeOf reflect.Type, elements []enumElement) (string, error) {
-	t.logf("Converting enum %s", typeOf.String())
+func (t *TypeScriptify) convertEnum(depth int, typeOf reflect.Type, elements []enumElement) (string, error) {
+	t.logf(depth, "Converting enum %s", typeOf.String())
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
@@ -521,11 +522,11 @@ func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) 
 	return jsonFieldName
 }
 
-func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]string) (string, error) {
+func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode map[string]string) (string, error) {
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
 	}
-	t.logf("Converting type %s", typeOf.String())
+	t.logf(depth, "Converting type %s", typeOf.String())
 
 	t.alreadyConverted[typeOf] = true
 
@@ -560,17 +561,17 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 		var err error
 		fldOpts := t.getFieldOptions(typeOf, field)
 		if fldOpts.TSTransform != "" {
-			t.logf("- simple field %s.%s", typeOf.Name(), field.Name)
+			t.logf(depth, "- simple field %s.%s", typeOf.Name(), field.Name)
 			err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 		} else if _, isEnum := t.enums[field.Type]; isEnum {
-			t.logf("- enum field %s.%s", typeOf.Name(), field.Name)
+			t.logf(depth, "- enum field %s.%s", typeOf.Name(), field.Name)
 			builder.AddEnumField(jsonFieldName, field)
 		} else if fldOpts.TSType != "" { // Struct:
-			t.logf("- simple field %s.%s", typeOf.Name(), field.Name)
+			t.logf(depth, "- simple field %s.%s", typeOf.Name(), field.Name)
 			err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 		} else if field.Type.Kind() == reflect.Struct { // Struct:
-			t.logf("- struct %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
-			typeScriptChunk, err := t.convertType(field.Type, customCode)
+			t.logf(depth, "- struct %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
+			typeScriptChunk, err := t.convertType(depth+1, field.Type, customCode)
 			if err != nil {
 				return "", err
 			}
@@ -579,7 +580,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			}
 			builder.AddStructField(jsonFieldName, field)
 		} else if field.Type.Kind() == reflect.Map {
-			t.logf("- map field %s.%s", typeOf.Name(), field.Name)
+			t.logf(depth, "- map field %s.%s", typeOf.Name(), field.Name)
 			// Also convert map key types if needed
 			var keyTypeToConvert reflect.Type
 			switch field.Type.Key().Kind() {
@@ -589,7 +590,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				keyTypeToConvert = field.Type.Key().Elem()
 			}
 			if keyTypeToConvert != nil {
-				typeScriptChunk, err := t.convertType(keyTypeToConvert, customCode)
+				typeScriptChunk, err := t.convertType(depth+1, keyTypeToConvert, customCode)
 				if err != nil {
 					return "", err
 				}
@@ -606,7 +607,7 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				valueTypeToConvert = field.Type.Elem().Elem()
 			}
 			if valueTypeToConvert != nil {
-				typeScriptChunk, err := t.convertType(valueTypeToConvert, customCode)
+				typeScriptChunk, err := t.convertType(depth+1, valueTypeToConvert, customCode)
 				if err != nil {
 					return "", err
 				}
@@ -628,8 +629,8 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 			}
 
 			if field.Type.Elem().Kind() == reflect.Struct { // Slice of structs:
-				t.logf("- struct slice %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
-				typeScriptChunk, err := t.convertType(field.Type.Elem(), customCode)
+				t.logf(depth, "- struct slice %s.%s (%s)", typeOf.Name(), field.Name, field.Type.String())
+				typeScriptChunk, err := t.convertType(depth+1, field.Type.Elem(), customCode)
 				if err != nil {
 					return "", err
 				}
@@ -638,11 +639,11 @@ func (t *TypeScriptify) convertType(typeOf reflect.Type, customCode map[string]s
 				}
 				builder.AddArrayOfStructsField(jsonFieldName, field, arrayDepth)
 			} else { // Slice of simple fields:
-				t.logf("- slice field %s.%s", typeOf.Name(), field.Name)
+				t.logf(depth, "- slice field %s.%s", typeOf.Name(), field.Name)
 				err = builder.AddSimpleArrayField(jsonFieldName, field, arrayDepth, fldOpts)
 			}
 		} else { // Simple field:
-			t.logf("- simple field %s.%s", typeOf.Name(), field.Name)
+			t.logf(depth, "- simple field %s.%s", typeOf.Name(), field.Name)
 			err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
 		}
 		if err != nil {
