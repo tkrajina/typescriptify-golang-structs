@@ -671,7 +671,7 @@ func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode m
 			result += fmt.Sprintf("%s}\n", t.Indent)
 		}
 		if needsConvertValue && (t.CreateConstructor || t.CreateFromMethod) {
-			result += "\n" + indentLines(tsConvertValuesFunc, 1) + "\n"
+			result += "\n" + indentLines(strings.ReplaceAll(tsConvertValuesFunc, "\t", t.Indent), 1) + "\n"
 		}
 	}
 
