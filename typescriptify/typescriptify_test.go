@@ -945,3 +945,28 @@ class Address {
 		`(converter.convertValues({"first": {street: "aaa", number: 19}} as any, Address, true) as {[_: string]: Address})["first"].street === "aaa"`,
 	})
 }
+
+func TestIgnoredPTR(t *testing.T) {
+	t.Parallel()
+	type PersonWithIgnoredPtr struct {
+		Name     string  `json:"name"`
+		Nickname *string `json:"-"`
+	}
+
+	converter := New()
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+	converter.Add(PersonWithIgnoredPtr{})
+
+	desiredResult := `
+      export class PersonWithIgnoredPtr {
+          name: string;
+      
+          constructor(source: any = {}) {
+              if ('string' === typeof source) source = JSON.parse(source);
+              this.name = source["name"];
+          }
+      }
+`
+	testConverter(t, converter, true, desiredResult, nil)
+}

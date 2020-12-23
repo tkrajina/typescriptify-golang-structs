@@ -506,6 +506,7 @@ func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) 
 			jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
 		}
 		hasOmitEmpty := false
+		ignored := false
 		for _, t := range jsonTagParts {
 			if t == "" {
 				break
@@ -514,8 +515,12 @@ func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) 
 				hasOmitEmpty = true
 				break
 			}
+			if t == "-" {
+				ignored = true
+				break
+			}
 		}
-		if isPtr || hasOmitEmpty {
+		if !ignored && isPtr || hasOmitEmpty {
 			jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
 		}
 	}
