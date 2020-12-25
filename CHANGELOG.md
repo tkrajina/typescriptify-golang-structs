@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.4
+
+- fix ignored pointers
+- interface cmdline flag
+
 ## v0.1.2
 
 - Log field and type creation to make the order (and why a type was converted) simpler to follow
