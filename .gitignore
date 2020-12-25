@@ -2,3 +2,4 @@
 .vscode/
 *.iml
 tags
+tmp_*

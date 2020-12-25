@@ -36,6 +36,7 @@ import (
 
 func main() {
 	t := typescriptify.New()
+	t.CreateInterface = {{ .Interface }}
 {{ range $key, $value := .InitParams }}	t.{{ $key }}={{ $value }}
 {{ end }}
 {{ range .Structs }}	t.Add({{ . }}{})
@@ -55,14 +56,17 @@ type Params struct {
 	Structs       []string
 	InitParams    map[string]interface{}
 	CustomImports arrayImports
+	Interface     bool
 }
 
 func main() {
-	var packagePath, target, backupDir string
+	var p Params
+	var backupDir string
 	var customImports arrayImports
-	flag.StringVar(&packagePath, "package", "", "Path of the package with models")
-	flag.StringVar(&target, "target", "", "Target typescript file")
+	flag.StringVar(&p.ModelsPackage, "package", "", "Path of the package with models")
+	flag.StringVar(&p.TargetFile, "target", "", "Target typescript file")
 	flag.StringVar(&backupDir, "backup", "", "Directory where backup files are saved")
+	flag.BoolVar(&p.Interface, "interface", false, "Create interfaces (not classes)")
 	flag.Var(&customImports, "import", "Typescript import for your custom type, repeat this option for each import needed")
 	flag.Parse()
 
@@ -80,16 +84,16 @@ func main() {
 		}
 	}
 
-	if len(packagePath) == 0 {
+	if len(p.ModelsPackage) == 0 {
 		fmt.Fprintln(os.Stderr, "No package given")
 		os.Exit(1)
 	}
-	if len(target) == 0 {
+	if len(p.TargetFile) == 0 {
 		fmt.Fprintln(os.Stderr, "No target file")
 		os.Exit(1)
 	}
 
-	packageParts := strings.Split(packagePath, "/")
+	packageParts := strings.Split(p.ModelsPackage, "/")
 	pckg := packageParts[len(packageParts)-1]
 
 	t := template.Must(template.New("").Parse(TEMPLATE))
@@ -111,14 +115,9 @@ func main() {
 		}
 	}
 
-	p := Params{
-		Structs:       structsArr,
-		ModelsPackage: packagePath,
-		TargetFile:    target,
-		InitParams: map[string]interface{}{
-			"BackupDir": fmt.Sprintf(`"%s"`, backupDir),
-		},
-		CustomImports: customImports,
+	p.Structs = structsArr
+	p.InitParams = map[string]interface{}{
+		"BackupDir": fmt.Sprintf(`"%s"`, backupDir),
 	}
 	err = t.Execute(f, p)
 	handleErr(err)
