@@ -752,7 +752,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 		return nil
 	}
 
-	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
+	return errors.New("Cannot find type for " + fieldType + ", field: " + fieldName)
 }
 
 func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.StructField) {
