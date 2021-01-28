@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.5
+
+- Fixed panic with arrays
+- Use go modules for dependency management
+- Example shell script how to create a typescript model directly from json
+
 ## v0.1.4
 
 - fix ignored pointers
