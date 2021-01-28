@@ -1,7 +1,6 @@
 package typescriptify
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -622,7 +621,7 @@ func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode m
 			}
 
 			builder.AddMapField(jsonFieldName, field)
-		} else if field.Type.Kind() == reflect.Slice { // Slice:
+		} else if field.Type.Kind() == reflect.Slice || field.Type.Kind() == reflect.Array { // Slice:
 			if field.Type.Elem().Kind() == reflect.Ptr { //extract ptr type
 				field.Type = field.Type.Elem()
 			}
@@ -752,7 +751,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 		return nil
 	}
 
-	return errors.New("Cannot find type for " + fieldType + ", fideld: " + fieldName)
+	return fmt.Errorf("cannot find type for %s (%s/%s)", kind.String(), fieldName, fieldType)
 }
 
 func (t *typeScriptClassBuilder) AddEnumField(fieldName string, field reflect.StructField) {

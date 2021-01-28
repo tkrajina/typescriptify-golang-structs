@@ -513,6 +513,44 @@ export class Keyboard {
 	testConverter(t, converter, true, desiredResult, nil)
 }
 
+func TestFixedArray(t *testing.T) {
+	t.Parallel()
+	type Sub struct{}
+	type Tmp struct {
+		Arr  [3]string `json:"arr"`
+		Arr2 [3]Sub    `json:"arr2"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Tmp{}))
+	converter.CreateFromMethod = false
+	converter.BackupDir = ""
+
+	desiredResult := `export class Sub {
+
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+
+    }
+}
+export class Tmp {
+    arr: string[];
+    arr2: Sub[];
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.arr = source["arr"];
+        this.arr2 = this.convertValues(source["arr2"], Sub);
+    }
+
+	` + tsConvertValuesFunc + `
+}
+`
+	testConverter(t, converter, true, desiredResult, nil)
+}
+
 func TestAny(t *testing.T) {
 	t.Parallel()
 	type Test struct {
