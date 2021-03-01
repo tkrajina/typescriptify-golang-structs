@@ -190,6 +190,11 @@ func (t *TypeScriptify) WithCreateFromMethod(b bool) *TypeScriptify {
 	return t
 }
 
+func (t *TypeScriptify) WithInterface(b bool) *TypeScriptify {
+	t.CreateInterface = b
+	return t
+}
+
 func (t *TypeScriptify) WithConstructor(b bool) *TypeScriptify {
 	t.CreateConstructor = b
 	return t
