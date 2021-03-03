@@ -292,8 +292,10 @@ func (t *TypeScriptify) AddEnum(values interface{}) *TypeScriptify {
 			el.value = item.Interface()
 			if tsNamer, is := item.Interface().(TSNamer); is {
 				el.name = tsNamer.TSName()
-			} else {
-				panic(fmt.Sprint(item.Type().String(), " has no TSName method"))
+			} else if stringer, is := item.Interface().(fmt.Stringer); is {
+				el.name = stringer.String()
+			} {
+				panic(fmt.Sprint(item.Type().String(), " has no TSName/String method"))
 			}
 		}
 
