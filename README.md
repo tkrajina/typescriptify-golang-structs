@@ -290,7 +290,7 @@ If you only want to change `ts_transform` but not `ts_type`, you can pass an emp
 
 There are two ways to create enums. 
 
-### Enums with TSName()
+### Enums with TSName() or String() (will be used if not exists TSName() method)
 
 In this case you must provide a list of enum values and the enum type must have a `TSName() string` method
 
@@ -310,6 +310,29 @@ const (
 var AllWeekdays = []Weekday{ Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, }
 
 func (w Weekday) TSName() string {
+	switch w {
+	case Sunday:
+		return "SUNDAY"
+	case Monday:
+		return "MONDAY"
+	case Tuesday:
+		return "TUESDAY"
+	case Wednesday:
+		return "WEDNESDAY"
+	case Thursday:
+		return "THURSDAY"
+	case Friday:
+		return "FRIDAY"
+	case Saturday:
+		return "SATURDAY"
+	default:
+		return "???"
+	}
+}
+
+var AllWeekdays = []Weekday{ Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, }
+
+func (w Weekday) String() string {
 	switch w {
 	case Sunday:
 		return "SUNDAY"
