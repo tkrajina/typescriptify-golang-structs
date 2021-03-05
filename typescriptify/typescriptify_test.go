@@ -767,6 +767,56 @@ export enum Gender {
 	testConverter(t, converter, true, desiredResult, nil)
 }
 
+type Animal int
+
+const (
+	Cat Animal = iota
+	Dog
+)
+
+func (a Animal) String() string {
+	switch a {
+	case Cat:
+		return "CAT"
+	case Dog:
+		return "DOG"
+	default:
+		return "???"
+	}
+}
+
+var allAnimalsV1 = []Animal{
+	Cat,
+	Dog,
+}
+
+// Another way to specify enums:
+var allAnimalsV2 = []struct {
+	Value  Animal
+	TSName string
+}{
+	{Cat, "CAT"},
+	{Dog, "DOG"},
+}
+
+func TestStringer(t *testing.T) {
+	t.Parallel()
+	for _, allAnimals := range []interface{}{allAnimalsV1, allAnimalsV2} {
+		converter := New().
+			AddEnum(allAnimals).
+			WithConstructor(false).
+			WithCreateFromMethod(true).
+			WithBackupDir("")
+
+		desiredResult := `export enum Animal {
+	CAT = 0,
+	DOG = 1,
+}
+`
+		testConverter(t, converter, true, desiredResult, nil)
+	}
+}
+
 func TestConstructorWithReferences(t *testing.T) {
 	t.Parallel()
 	converter := New().
