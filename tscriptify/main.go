@@ -62,12 +62,11 @@ type Params struct {
 func main() {
 	var p Params
 	var backupDir string
-	var customImports arrayImports
 	flag.StringVar(&p.ModelsPackage, "package", "", "Path of the package with models")
 	flag.StringVar(&p.TargetFile, "target", "", "Target typescript file")
 	flag.StringVar(&backupDir, "backup", "", "Directory where backup files are saved")
 	flag.BoolVar(&p.Interface, "interface", false, "Create interfaces (not classes)")
-	flag.Var(&customImports, "import", "Typescript import for your custom type, repeat this option for each import needed")
+	flag.Var(&p.CustomImports, "import", "Typescript import for your custom type, repeat this option for each import needed")
 	flag.Parse()
 
 	structs := []string{}
