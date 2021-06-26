@@ -1008,3 +1008,29 @@ func TestIgnoredPTR(t *testing.T) {
 `
 	testConverter(t, converter, true, desiredResult, nil)
 }
+
+func TestMapWithPrefix(t *testing.T) {
+	t.Parallel()
+
+	type Example struct {
+		Variable map[string]string `json:"variable"`
+	}
+
+	converter := New().WithPrefix("prefix_").Add(Example{})
+
+	desiredResult := `
+export class prefix_Example {
+    variable: {[key: string]: string};
+
+    static createFrom(source: any = {}) {
+        return new prefix_Example(source);
+    }
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.variable = source["variable"];
+    }
+}
+`
+	testConverter(t, converter, true, desiredResult, nil)
+}
