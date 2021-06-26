@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.6
+
+- Fix map keys if suffix/prefix specified
+- process customImports on Params with other flags
+
 ## v0.1.5
 
 - Fixed panic with arrays
