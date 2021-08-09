@@ -1,0 +1,51 @@
+# .goreleaser.yml
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - main: ./tscriptify/main.go
+    id: "tscriptify"
+    binary: tscriptify
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - 6
+      - 7
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+release:
+  prerelease: auto
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+nfpms:
+  - vendor: base2Services
+    homepage: https://github.com/officeadminsorted/form0-rnd-search-service
+    maintainer: Arran Ubels <a.ubels@base2services.com>
+    description: NA
+    license: Private
+    formats:
+      - apk
+      - deb
+      - rpm
+    release: 1
+    section: default
+    priority: extra
