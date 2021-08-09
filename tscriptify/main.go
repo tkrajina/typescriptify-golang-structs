@@ -95,6 +95,8 @@ func main() {
 	packageParts := strings.Split(p.ModelsPackage, "/")
 	pckg := packageParts[len(packageParts)-1]
 
+	pckg = strings.Replace(pckg, "-", "_", -1)
+
 	t := template.Must(template.New("").Parse(TEMPLATE))
 
 	filename, err := ioutil.TempDir(os.TempDir(), "")
