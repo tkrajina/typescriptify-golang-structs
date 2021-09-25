@@ -125,12 +125,9 @@ func New() *TypeScriptify {
 	result.kinds = kinds
 
 	result.Indent = "    "
-	result.CreateFromMethod = true
+	result.CreateFromMethod = false
 	result.CreateConstructor = true
 
-	if result.CreateFromMethod {
-		fmt.Fprintln(os.Stderr, "FromMethod METHOD IS DEPRECATED AND WILL BE REMOVED!!!!!!")
-	}
 	return result
 }
 
@@ -320,6 +317,10 @@ func (t *TypeScriptify) AddEnumValues(typeOf reflect.Type, values interface{}) *
 }
 
 func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
+	if t.CreateFromMethod {
+		fmt.Fprintln(os.Stderr, "FromMethod METHOD IS DEPRECATED AND WILL BE REMOVED!!!!!!")
+	}
+
 	t.alreadyConverted = make(map[reflect.Type]bool)
 	depth := 0
 
