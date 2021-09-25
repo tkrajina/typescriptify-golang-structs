@@ -6,10 +6,6 @@ export class Address {
     number: number;
     country?: string;
 
-    static createFrom(source: any = {}) {
-        return new Address(source);
-    }
-
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
         this.city = source["city"];
@@ -28,10 +24,6 @@ export class Address {
 export class PersonalInfo {
     hobby: string[];
     pet_name: string;
-
-    static createFrom(source: any = {}) {
-        return new PersonalInfo(source);
-    }
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -54,10 +46,6 @@ export class Person {
     address?: Address;
     metadata: {[key:string]:string};
     friends: Person[];
-
-    static createFrom(source: any = {}) {
-        return new Person(source);
-    }
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);

@@ -17,10 +17,6 @@ var Address = /** @class */ (function () {
         this.number = source["number"];
         this.country = source["country"];
     }
-    Address.createFrom = function (source) {
-        if (source === void 0) { source = {}; }
-        return new Address(source);
-    };
     return Address;
 }());
 exports.Address = Address;
@@ -37,10 +33,6 @@ var PersonalInfo = /** @class */ (function () {
         this.hobby = source["hobby"];
         this.pet_name = source["pet_name"];
     }
-    PersonalInfo.createFrom = function (source) {
-        if (source === void 0) { source = {}; }
-        return new PersonalInfo(source);
-    };
     return PersonalInfo;
 }());
 exports.PersonalInfo = PersonalInfo;
@@ -62,10 +54,6 @@ var Person = /** @class */ (function () {
         this.metadata = source["metadata"];
         this.friends = this.convertValues(source["friends"], Person);
     }
-    Person.createFrom = function (source) {
-        if (source === void 0) { source = {}; }
-        return new Person(source);
-    };
     Person.prototype.convertValues = function (a, classs, asMap) {
         var _this = this;
         if (asMap === void 0) { asMap = false; }

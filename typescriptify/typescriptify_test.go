@@ -46,7 +46,6 @@ func TestTypescriptifyWithTypes(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
 	converter.CreateConstructor = false
 	converter.BackupDir = ""
 
@@ -74,7 +73,6 @@ func TestTypescriptifyWithCustomImports(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 	converter.AddImport("//import { Decimal } from 'decimal.js'")
 	converter.CreateConstructor = false
@@ -107,7 +105,6 @@ func TestTypescriptifyWithInstances(t *testing.T) {
 
 	converter.Add(Person{})
 	converter.Add(Dummy{})
-	converter.CreateFromMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
 	converter.CreateConstructor = false
@@ -137,7 +134,6 @@ func TestTypescriptifyWithInterfaces(t *testing.T) {
 
 	converter.Add(Person{})
 	converter.Add(Dummy{})
-	converter.CreateFromMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
 	converter.CreateInterface = true
@@ -167,7 +163,6 @@ func TestTypescriptifyWithDoubleClasses(t *testing.T) {
 
 	converter.AddType(reflect.TypeOf(Person{}))
 	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
 	converter.CreateConstructor = false
 	converter.BackupDir = ""
 
@@ -198,17 +193,11 @@ func TestWithPrefixes(t *testing.T) {
 	converter.Suffix = "_test"
 
 	converter.Add(Person{})
-	converter.CreateFromMethod = false
 	converter.DontExport = true
 	converter.BackupDir = ""
-	converter.CreateFromMethod = true
 
 	desiredResult := `class test_Dummy_test {
 	something: string;
-
-    static createFrom(source: any = {}) {
-		return new test_Dummy_test(source);
-	}
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -218,10 +207,6 @@ func TestWithPrefixes(t *testing.T) {
 class test_Address_test {
     duration: number;
 	text?: string;
-
-    static createFrom(source: any = {}) {
-		return new test_Address_test(source);
-	}
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -237,10 +222,6 @@ class test_Person_test {
     metadata: {[key:string]:string};
     friends: test_Person_test[];
 	a: test_Dummy_test;
-
-    static createFrom(source: any = {}) {
-		return new test_Person_test(source);
-	}
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -281,6 +262,8 @@ func testConverter(t *testing.T, converter *TypeScriptify, strictMode bool, desi
 		panic(err.Error())
 	}
 
+	fmt.Println("----------------------------------------------------------------------------------------------------")
+	fmt.Println(desiredResult)
 	fmt.Println("----------------------------------------------------------------------------------------------------")
 	fmt.Println(typeScriptCode)
 	fmt.Println("----------------------------------------------------------------------------------------------------")
@@ -356,7 +339,6 @@ func TestTypescriptifyCustomType(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(TestCustomType{}))
-	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 	converter.CreateConstructor = false
 
@@ -374,15 +356,10 @@ func TestDate(t *testing.T) {
 
 	converter := New()
 	converter.AddType(reflect.TypeOf(TestCustomType{}))
-	converter.CreateFromMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class TestCustomType {
 	time: Date;
-
-    static createFrom(source: any = {}) {
-        return new TestCustomType(source);
-	}
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -407,23 +384,17 @@ func TestDateWithoutTags(t *testing.T) {
 	// Test with custom field options defined per-one-struct:
 	converter1 := New()
 	converter1.Add(NewStruct(TestCustomType{}).WithFieldOpts(time.Time{}, TypeOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"}))
-	converter1.CreateFromMethod = true
 	converter1.BackupDir = ""
 
 	// Test with custom field options defined globally:
 	converter2 := New()
 	converter2.Add(reflect.TypeOf(TestCustomType{}))
 	converter2.ManageType(time.Time{}, TypeOptions{TSType: "Date", TSTransform: "new Date(__VALUE__)"})
-	converter2.CreateFromMethod = true
 	converter2.BackupDir = ""
 
 	for _, converter := range []*TypeScriptify{converter1, converter2} {
 		desiredResult := `export class TestCustomType {
 	time: Date;
-
-    static createFrom(source: any = {}) {
-        return new TestCustomType(source);
-	}
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -449,15 +420,10 @@ func TestRecursive(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Test{}))
-	converter.CreateFromMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class Test {
 	children: Test[];
-
-    static createFrom(source: any = {}) {
-        return new Test(source);
-	}
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -481,15 +447,10 @@ func TestArrayOfArrays(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Keyboard{}))
-	converter.CreateFromMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class Key {
 	key: string;
-
-    static createFrom(source: any = {}) {
-        return new Key(source);
-    }
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -498,10 +459,6 @@ func TestArrayOfArrays(t *testing.T) {
 }
 export class Keyboard {
     keys: Key[][];
-
-    static createFrom(source: any = {}) {
-        return new Keyboard(source);
-    }
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -524,7 +481,6 @@ func TestFixedArray(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Tmp{}))
-	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 
 	desiredResult := `export class Sub {
@@ -560,15 +516,10 @@ func TestAny(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Test{}))
-	converter.CreateFromMethod = true
 	converter.BackupDir = ""
 
 	desiredResult := `export class Test {
 	field: any;
-
-    static createFrom(source: any = {}) {
-		return new Test(source);
-	}
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -593,7 +544,6 @@ func TestTypeAlias(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(Person{}))
-	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 	converter.CreateConstructor = false
 
@@ -622,7 +572,6 @@ func TestOverrideCustomType(t *testing.T) {
 	converter := New()
 
 	converter.AddType(reflect.TypeOf(SomeStruct{}))
-	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 	converter.CreateConstructor = false
 
@@ -704,8 +653,7 @@ func TestEnum(t *testing.T) {
 		converter := New().
 			AddType(reflect.TypeOf(Holliday{})).
 			AddEnum(allWeekdays).
-			WithConstructor(false).
-			WithCreateFromMethod(true).
+			WithConstructor(true).
 			WithBackupDir("")
 
 		desiredResult := `export enum Weekday {
@@ -720,10 +668,6 @@ func TestEnum(t *testing.T) {
 export class Holliday {
 	name: string;
 	weekday: Weekday;
-
-	static createFrom(source: any = {}) {
-        return new Holliday(source);
-    }
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -755,7 +699,6 @@ func TestEnumWithStringValues(t *testing.T) {
 	converter := New().
 		AddEnum(allGenders).
 		WithConstructor(false).
-		WithCreateFromMethod(false).
 		WithBackupDir("")
 
 	desiredResult := `
@@ -773,7 +716,6 @@ func TestConstructorWithReferences(t *testing.T) {
 		AddType(reflect.TypeOf(Person{})).
 		AddEnum(allWeekdaysV2).
 		WithConstructor(true).
-		WithCreateFromMethod(false).
 		WithBackupDir("")
 
 	desiredResult := `export enum Weekday {
@@ -839,7 +781,6 @@ func TestMaps(t *testing.T) {
 	converter := New().
 		AddType(reflect.TypeOf(WithMap{})).
 		WithConstructor(true).
-		WithCreateFromMethod(false).
 		WithBackupDir("")
 
 	desiredResult := `
@@ -895,7 +836,6 @@ func TestPTR(t *testing.T) {
 	}
 
 	converter := New()
-	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 	converter.CreateConstructor = false
 	converter.Add(Person{})
@@ -918,7 +858,6 @@ func TestAnonymousPtr(t *testing.T) {
 	converter := New().
 		AddType(reflect.TypeOf(PersonWithPtrName{})).
 		WithConstructor(true).
-		WithCreateFromMethod(false).
 		WithBackupDir("")
 
 	desiredResult := `
@@ -992,7 +931,6 @@ func TestIgnoredPTR(t *testing.T) {
 	}
 
 	converter := New()
-	converter.CreateFromMethod = false
 	converter.BackupDir = ""
 	converter.Add(PersonWithIgnoredPtr{})
 
@@ -1021,10 +959,6 @@ func TestMapWithPrefix(t *testing.T) {
 	desiredResult := `
 export class prefix_Example {
     variable: {[key: string]: string};
-
-    static createFrom(source: any = {}) {
-        return new prefix_Example(source);
-    }
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
