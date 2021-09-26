@@ -30,7 +30,7 @@ const TEMPLATE = `package main
 import (
 	"fmt"
 
-	"{{ .ModelsPackage }}"
+	m "{{ .ModelsPackage }}"
 	"github.com/tkrajina/typescriptify-golang-structs/typescriptify"
 )
 
@@ -57,6 +57,7 @@ type Params struct {
 	InitParams    map[string]interface{}
 	CustomImports arrayImports
 	Interface     bool
+	Verbose       bool
 }
 
 func main() {
@@ -67,6 +68,7 @@ func main() {
 	flag.StringVar(&backupDir, "backup", "", "Directory where backup files are saved")
 	flag.BoolVar(&p.Interface, "interface", false, "Create interfaces (not classes)")
 	flag.Var(&p.CustomImports, "import", "Typescript import for your custom type, repeat this option for each import needed")
+	flag.BoolVar(&p.Verbose, "verbose", false, "Verbose logs")
 	flag.Parse()
 
 	structs := []string{}
@@ -92,9 +94,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	packageParts := strings.Split(p.ModelsPackage, "/")
-	pckg := packageParts[len(packageParts)-1]
-
 	t := template.Must(template.New("").Parse(TEMPLATE))
 
 	filename, err := ioutil.TempDir(os.TempDir(), "")
@@ -110,7 +109,7 @@ func main() {
 	for _, str := range structs {
 		str = strings.TrimSpace(str)
 		if len(str) > 0 {
-			structsArr = append(structsArr, pckg+"."+str)
+			structsArr = append(structsArr, "m."+str)
 		}
 	}
 
@@ -120,6 +119,12 @@ func main() {
 	}
 	err = t.Execute(f, p)
 	handleErr(err)
+
+	if p.Verbose {
+		byts, err := ioutil.ReadFile(filename)
+		handleErr(err)
+		fmt.Printf("\nCompiling generated code (%s):\n%s\n----------------------------------------------------------------------------------------------------\n", filename, string(byts))
+	}
 
 	cmd := exec.Command("go", "run", filename)
 	fmt.Println(strings.Join(cmd.Args, " "))
