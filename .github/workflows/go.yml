@@ -7,16 +7,20 @@ on:
     branches: 'master'
 
 jobs:
-
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: [1.16.x]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
 
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.13
+        go-version: ${{ matrix.go-version }}
       id: go
 
     - name: Check out code into the Go module directory
@@ -24,11 +28,7 @@ jobs:
 
     - name: Get dependencies
       run: |
-        go get -v -t -d ./...
-        if [ -f Gopkg.toml ]; then
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-            dep ensure
-        fi
+        go mod download
 
     - name: Build
       run: |
