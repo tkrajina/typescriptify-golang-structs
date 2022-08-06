@@ -968,3 +968,25 @@ export class prefix_Example {
 `
 	testConverter(t, converter, true, desiredResult, nil)
 }
+
+func TestFieldNamesWithoutJSONAnnotation(t *testing.T) {
+	t.Parallel()
+
+	type WithoutAnnotation struct {
+		PublicField  string
+		privateField string
+	}
+
+	converter := New().Add(WithoutAnnotation{})
+	desiredResult := `
+export class WithoutAnnotation {
+    PublicField: string;
+
+    constructor(source: any = {}) {
+        if ('string' === typeof source) source = JSON.parse(source);
+        this.PublicField = source["PublicField"];
+    }
+}
+`
+	testConverter(t, converter, true, desiredResult, nil)
+}
