@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.8
+## v0.1.8, v0.1.9
 
 - Typescript doc tags
 - Handle fields that is not annotated with json tag
