@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.8
+
+- Typescript doc tags
+- Handle fields that is not annotated with json tag
+- Matrix testing
+
+## v0.1.7
+
+- Handle packages with hyphens
+
 ## v0.1.6
 
 - Fix map keys if suffix/prefix specified
