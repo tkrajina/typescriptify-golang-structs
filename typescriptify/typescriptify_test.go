@@ -990,3 +990,22 @@ export class WithoutAnnotation {
 `
 	testConverter(t, converter, true, desiredResult, nil)
 }
+
+func TestTypescriptifyComment(t *testing.T) {
+	t.Parallel()
+	type Person struct {
+		Name string `json:"name" ts_doc:"This is a comment"`
+	}
+
+	converter := New()
+
+	converter.AddType(reflect.TypeOf(Person{}))
+	converter.BackupDir = ""
+	converter.CreateConstructor = false
+
+	desiredResult := `export class Person {
+	/** This is a comment */
+	name: string;
+}`
+	testConverter(t, converter, false, desiredResult, nil)
+}

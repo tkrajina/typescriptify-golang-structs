@@ -222,6 +222,25 @@ converter.Add(Person{})
 
 The model name will be `API_Person` instead of `Person`.
 
+## Field comments
+
+Field documentation comments can be added with the `ts_doc` tag:
+
+```golang
+type Person struct {
+	Name string `json:"name" ts_doc:"This is a comment"`
+}
+```
+
+Generated typescript:
+
+```typescript
+export class Person {
+	/** This is a comment */
+	name: string;
+}
+```
+
 ## Custom types
 
 If your field has a type not supported by typescriptify which can be JSONized as is, then you can use the `ts_type` tag to specify the typescript type to use:

@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	tsDocTag            = "ts_doc"
 	tsTransformTag      = "ts_transform"
 	tsType              = "ts_type"
 	tsConvertValuesFunc = `convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -37,6 +38,7 @@ const (
 // TypeOptions overrides options set by `ts_*` tags.
 type TypeOptions struct {
 	TSType      string
+	TSDoc       string
 	TSTransform string
 }
 
@@ -477,7 +479,11 @@ func (t *TypeScriptify) convertEnum(depth int, typeOf reflect.Type, elements []e
 
 func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.StructField) TypeOptions {
 	// By default use options defined by tags:
-	opts := TypeOptions{TSTransform: field.Tag.Get(tsTransformTag), TSType: field.Tag.Get(tsType)}
+	opts := TypeOptions{
+		TSTransform: field.Tag.Get(tsTransformTag),
+		TSType:      field.Tag.Get(tsType),
+		TSDoc:       field.Tag.Get(tsDocTag),
+	}
 
 	overrides := []TypeOptions{}
 
@@ -579,6 +585,9 @@ func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode m
 
 		var err error
 		fldOpts := t.getFieldOptions(typeOf, field)
+		if fldOpts.TSDoc != "" {
+			result += "\t/** " + fldOpts.TSDoc + " */\n"
+		}
 		if fldOpts.TSTransform != "" {
 			t.logf(depth, "- simple field %s.%s", typeOf.Name(), field.Name)
 			err = builder.AddSimpleField(jsonFieldName, field, fldOpts)
