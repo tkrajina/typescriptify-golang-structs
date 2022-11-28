@@ -781,10 +781,11 @@ func TestMaps(t *testing.T) {
 	converter := New().
 		AddType(reflect.TypeOf(WithMap{})).
 		WithConstructor(true).
+		WithPrefix("API_").
 		WithBackupDir("")
 
 	desiredResult := `
-      export class Address {
+      export class API_Address {
           duration: number;
           text?: string;
       
@@ -794,16 +795,16 @@ func TestMaps(t *testing.T) {
               this.text = source["text"];
 		  }
       }
-      export class WithMap {
+      export class API_WithMap {
           simpleMap: {[key: string]: number};
-          mapObjects: {[key: string]: Address};
-          ptrMapObjects?: {[key: string]: Address};
+          mapObjects: {[key: string]: API_Address};
+          ptrMapObjects?: {[key: string]: API_Address};
 
           constructor(source: any = {}) {
               if ('string' === typeof source) source = JSON.parse(source);
               this.simpleMap = source["simpleMap"];
-			  this.mapObjects = this.convertValues(source["mapObjects"], Address, true);
-			  this.ptrMapObjects = this.convertValues(source["ptrMapObjects"], Address, true);
+			  this.mapObjects = this.convertValues(source["mapObjects"], API_Address, true);
+			  this.ptrMapObjects = this.convertValues(source["ptrMapObjects"], API_Address, true);
 		  }
 
 		  ` + tsConvertValuesFunc + `
@@ -817,15 +818,15 @@ func TestMaps(t *testing.T) {
 	}
 
 	testConverter(t, converter, true, desiredResult, []string{
-		`new WithMap(` + jsonizeOrPanic(json) + `).simpleMap.aaa == 1`,
-		`(new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof Address`,
-		`!((new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof WithMap)`,
-		`new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.duration == 1`,
-		`new WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.text === "txt1"`,
-		`(new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc) instanceof Address`,
-		`!((new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc) instanceof WithMap)`,
-		`new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc?.duration === 2`,
-		`new WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc?.text === "txt2"`,
+		`new API_WithMap(` + jsonizeOrPanic(json) + `).simpleMap.aaa == 1`,
+		`(new API_WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof API_Address`,
+		`!((new API_WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb) instanceof API_WithMap)`,
+		`new API_WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.duration == 1`,
+		`new API_WithMap(` + jsonizeOrPanic(json) + `).mapObjects.bbb.text === "txt1"`,
+		`(new API_WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc) instanceof API_Address`,
+		`!((new API_WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc) instanceof API_WithMap)`,
+		`new API_WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc?.duration === 2`,
+		`new API_WithMap(` + jsonizeOrPanic(json) + `)?.ptrMapObjects?.ccc?.text === "txt2"`,
 	})
 }
 
