@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.10
+
+- missing prefix in struct map value types
+
 ## v0.1.8, v0.1.9
 
 - Typescript doc tags
