@@ -539,7 +539,7 @@ func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) 
 				break
 			}
 		}
-		if !ignored && isPtr || hasOmitEmpty {
+		if !ignored && hasOmitEmpty {
 			jsonFieldName = fmt.Sprintf("%s?", jsonFieldName)
 		}
 	} else if /*field.IsExported()*/ field.PkgPath == "" {
