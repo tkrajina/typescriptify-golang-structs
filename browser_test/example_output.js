@@ -1,11 +1,11 @@
 "use strict";
 /* Do not change, this code is generated from Golang structs */
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.Person = exports.PersonalInfo = exports.Address = void 0;
 var Address = /** @class */ (function () {
     function Address(source) {
-        var _this = this;
         if (source === void 0) { source = {}; }
+        var _this = this;
         //[Address:]
         /* Custom code here */
         this.getAddressString = function () {
@@ -22,8 +22,8 @@ var Address = /** @class */ (function () {
 exports.Address = Address;
 var PersonalInfo = /** @class */ (function () {
     function PersonalInfo(source) {
-        var _this = this;
         if (source === void 0) { source = {}; }
+        var _this = this;
         //[PersonalInfo:]
         this.getPersonalInfoString = function () {
             return "pet:" + _this.pet_name;
@@ -38,8 +38,8 @@ var PersonalInfo = /** @class */ (function () {
 exports.PersonalInfo = PersonalInfo;
 var Person = /** @class */ (function () {
     function Person(source) {
-        var _this = this;
         if (source === void 0) { source = {}; }
+        var _this = this;
         //[Person:]
         this.getInfo = function () {
             return "name:" + _this.name;

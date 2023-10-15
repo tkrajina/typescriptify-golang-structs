@@ -6,12 +6,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
-	"time"
 )
 
 type arrayImports []string
@@ -96,12 +94,7 @@ func main() {
 
 	t := template.Must(template.New("").Parse(TEMPLATE))
 
-	filename, err := ioutil.TempDir(os.TempDir(), "")
-	handleErr(err)
-
-	filename = fmt.Sprintf("%s/typescriptify_%d.go", filename, time.Now().Nanosecond())
-
-	f, err := os.Create(filename)
+	f, err := os.CreateTemp(os.TempDir(), "typescriptify_*.go")
 	handleErr(err)
 	defer f.Close()
 
@@ -121,12 +114,12 @@ func main() {
 	handleErr(err)
 
 	if p.Verbose {
-		byts, err := ioutil.ReadFile(filename)
+		byts, err := os.ReadFile(f.Name())
 		handleErr(err)
-		fmt.Printf("\nCompiling generated code (%s):\n%s\n----------------------------------------------------------------------------------------------------\n", filename, string(byts))
+		fmt.Printf("\nCompiling generated code (%s):\n%s\n----------------------------------------------------------------------------------------------------\n", f.Name(), string(byts))
 	}
 
-	cmd := exec.Command("go", "run", filename)
+	cmd := exec.Command("go", "run", f.Name())
 	fmt.Println(strings.Join(cmd.Args, " "))
 	output, err := cmd.CombinedOutput()
 	if err != nil {

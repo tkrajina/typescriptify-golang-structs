@@ -2,7 +2,7 @@ package typescriptify
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"reflect"
@@ -365,7 +365,7 @@ func loadCustomCode(fileName string) (map[string]string, error) {
 	}
 	defer f.Close()
 
-	bytes, err := ioutil.ReadAll(f)
+	bytes, err := io.ReadAll(f)
 	if err != nil {
 		return result, err
 	}
@@ -401,7 +401,7 @@ func (t TypeScriptify) backup(fileName string) error {
 	}
 	defer fileIn.Close()
 
-	bytes, err := ioutil.ReadAll(fileIn)
+	bytes, err := io.ReadAll(fileIn)
 	if err != nil {
 		return err
 	}
@@ -411,7 +411,7 @@ func (t TypeScriptify) backup(fileName string) error {
 		backupFn = path.Join(t.BackupDir, backupFn)
 	}
 
-	return ioutil.WriteFile(backupFn, bytes, os.FileMode(0700))
+	return os.WriteFile(backupFn, bytes, os.FileMode(0700))
 }
 
 func (t TypeScriptify) ConvertToFile(fileName string) error {

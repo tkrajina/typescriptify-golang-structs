@@ -3,7 +3,6 @@ package typescriptify
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
@@ -303,9 +302,13 @@ func testConverter(t *testing.T, converter *TypeScriptify, strictMode bool, desi
 }
 
 func testTypescriptExpression(t *testing.T, strictMode bool, baseScript string, tsExpressionAndDesiredResults []string) {
-	f, err := ioutil.TempFile(os.TempDir(), "*.ts")
+	f, err := os.CreateTemp(os.TempDir(), "*.ts")
 	assert.Nil(t, err)
 	assert.NotNil(t, f)
+
+	if t.Failed() {
+		t.FailNow()
+	}
 
 	_, _ = f.WriteString(baseScript)
 	_, _ = f.WriteString("\n")
@@ -977,6 +980,8 @@ func TestFieldNamesWithoutJSONAnnotation(t *testing.T) {
 		PublicField  string
 		privateField string
 	}
+	var tmp WithoutAnnotation
+	tmp.privateField = ""
 
 	converter := New().Add(WithoutAnnotation{})
 	desiredResult := `
