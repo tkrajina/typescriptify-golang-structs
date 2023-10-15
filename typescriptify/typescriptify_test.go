@@ -995,7 +995,8 @@ export class WithoutAnnotation {
 func TestTypescriptifyComment(t *testing.T) {
 	t.Parallel()
 	type Person struct {
-		Name string `json:"name" ts_doc:"This is a comment"`
+		Age  int    `json:"age" ts_doc:"Age comment"`
+		Name string `json:"name" ts_doc:"Name comment"`
 	}
 
 	converter := New()
@@ -1005,7 +1006,9 @@ func TestTypescriptifyComment(t *testing.T) {
 	converter.CreateConstructor = false
 
 	desiredResult := `export class Person {
-	/** This is a comment */
+	/** Age comment */
+	age: number;
+	/** Name comment */
 	name: string;
 }`
 	testConverter(t, converter, false, desiredResult, nil)

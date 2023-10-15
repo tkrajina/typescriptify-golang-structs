@@ -587,7 +587,7 @@ func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode m
 		var err error
 		fldOpts := t.getFieldOptions(typeOf, field)
 		if fldOpts.TSDoc != "" {
-			result += "\t/** " + fldOpts.TSDoc + " */\n"
+			builder.addFieldDefinitionLine("/** " + fldOpts.TSDoc + " */")
 		}
 		if fldOpts.TSTransform != "" {
 			t.logf(depth, "- simple field %s.%s", typeOf.Name(), field.Name)
@@ -803,6 +803,10 @@ func (t *typeScriptClassBuilder) AddArrayOfStructsField(fieldName string, field 
 func (t *typeScriptClassBuilder) addInitializerFieldLine(fld, initializer string) {
 	t.createFromMethodBody = append(t.createFromMethodBody, fmt.Sprint(t.indent, t.indent, "result.", fld, " = ", initializer, ";"))
 	t.constructorBody = append(t.constructorBody, fmt.Sprint(t.indent, t.indent, "this.", fld, " = ", initializer, ";"))
+}
+
+func (t *typeScriptClassBuilder) addFieldDefinitionLine(line string) {
+	t.fields = append(t.fields, t.indent+line)
 }
 
 func (t *typeScriptClassBuilder) addField(fld, fldType string) {
