@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
+	"unicode"
 )
 
 type arrayImports []string
@@ -152,11 +153,19 @@ func (v *AVisitor) Visit(node ast.Node) ast.Visitor {
 	if node != nil {
 		switch t := node.(type) {
 		case *ast.Ident:
-			v.structNameCandidate = t.Name
+			if unicode.IsUpper(rune(t.Name[0])) {
+				v.structNameCandidate = t.Name
+			} else {
+				v.structNameCandidate = ""
+			}
 		case *ast.StructType:
 			if len(v.structNameCandidate) > 0 {
-				v.structs = append(v.structs, v.structNameCandidate)
-				v.structNameCandidate = ""
+				if unicode.IsUpper(rune(v.structNameCandidate[0])) {
+					v.structs = append(v.structs, v.structNameCandidate)
+					v.structNameCandidate = ""
+				} else {
+					v.structNameCandidate = ""
+				}
 			}
 		default:
 			v.structNameCandidate = ""
