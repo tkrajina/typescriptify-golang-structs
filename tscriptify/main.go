@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"text/template"
 )
@@ -101,6 +102,9 @@ func main() {
 	structsArr := make([]string, 0)
 	for _, str := range structs {
 		str = strings.TrimSpace(str)
+		if strings.Contains(str, string(filepath.Separator)) {
+			continue
+		}
 		if len(str) > 0 {
 			structsArr = append(structsArr, "m."+str)
 		}
