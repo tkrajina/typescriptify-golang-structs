@@ -15,11 +15,11 @@ import (
 
 type Address struct {
 	// Used in html
-	Duration float64 `json:"duration"`
-	Text1    string  `json:"text,omitempty"`
+	Duration float64 `json:"duration" custom:"durationCustom"`
+	Text1    string  `json:"text,omitempty" custom:"textCustom,omitempty"`
 	// Ignored:
-	Text2 string `json:",omitempty"`
-	Text3 string `json:"-"`
+	Text2 string `json:",omitempty" custom:",omitempty"`
+	Text3 string `json:"-" custom:"-"`
 }
 
 type Dummy struct {
@@ -1015,6 +1015,22 @@ func TestTypescriptifyComment(t *testing.T) {
 	age: number;
 	/** Name comment */
 	name: string;
+}`
+	testConverter(t, converter, false, desiredResult, nil)
+}
+
+func TestTypescriptifyCustomJsonTag(t *testing.T) {
+	t.Parallel()
+
+	converter := New().WithCustomJsonTag("custom")
+
+	converter.AddType(reflect.TypeOf(Address{}))
+	converter.CreateConstructor = false
+	converter.BackupDir = ""
+
+	desiredResult := `export class Address {
+	durationCustom: number;
+	textCustom?: string;
 }`
 	testConverter(t, converter, false, desiredResult, nil)
 }

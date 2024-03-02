@@ -16,6 +16,7 @@ const (
 	tsDocTag            = "ts_doc"
 	tsTransformTag      = "ts_transform"
 	tsType              = "ts_type"
+	jsonTag             = "json"
 	tsConvertValuesFunc = `convertValues(a: any, classs: any, asMap: boolean = false): any {
 	if (!a) {
 		return a;
@@ -86,6 +87,7 @@ type TypeScriptify struct {
 	BackupDir         string // If empty no backup
 	DontExport        bool
 	CreateInterface   bool
+	CustomJsonTag     string
 	customImports     []string
 
 	structTypes []StructType
@@ -216,6 +218,11 @@ func (t *TypeScriptify) WithPrefix(p string) *TypeScriptify {
 
 func (t *TypeScriptify) WithSuffix(s string) *TypeScriptify {
 	t.Suffix = s
+	return t
+}
+
+func (t *TypeScriptify) WithCustomJsonTag(tag string) *TypeScriptify {
+	t.CustomJsonTag = tag
 	return t
 }
 
@@ -518,7 +525,11 @@ func (t *TypeScriptify) getFieldOptions(structType reflect.Type, field reflect.S
 
 func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) string {
 	jsonFieldName := ""
-	jsonTag := field.Tag.Get("json")
+	tag := jsonTag
+	if t.CustomJsonTag != "" {
+		tag = t.CustomJsonTag
+	}
+	jsonTag := field.Tag.Get(tag)
 	if len(jsonTag) > 0 {
 		jsonTagParts := strings.Split(jsonTag, ",")
 		if len(jsonTagParts) > 0 {
