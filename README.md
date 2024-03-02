@@ -5,7 +5,7 @@
 The command-line tool:
 
 ```
-go get github.com/tkrajina/typescriptify-golang-structs/tscriptify
+go install github.com/tkrajina/typescriptify-golang-structs/tscriptify
 ```
 
 The library:
