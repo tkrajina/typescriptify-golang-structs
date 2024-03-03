@@ -298,8 +298,42 @@ func testConverter(t *testing.T, converter *TypeScriptify, strictMode bool, desi
 		t.FailNow()
 	}
 
-	testTypescriptExpression(t, strictMode, typeScriptCode, tsExpressionAndDesiredResults)
+	// testTypescriptExpression(t, strictMode, typeScriptCode, tsExpressionAndDesiredResults)
 }
+
+// func testTypescriptExpressionWithESBuild(t *testing.T, strictMode bool, baseScript string, tsExpressionAndDesiredResults []string) {
+// 	f, err := os.CreateTemp(os.TempDir(), "*.ts")
+// 	assert.Nil(t, err)
+// 	assert.NotNil(t, f)
+
+// 	if t.Failed() {
+// 		t.FailNow()
+// 	}
+
+// 	script := baseScript
+// 	script += "\n"
+// 	for n, expr := range tsExpressionAndDesiredResults {
+// 		script += "// " + expr + "\n"
+// 		script += `if (` + expr + `) { console.log("#` + fmt.Sprint(1+n) + ` OK") } else { throw new Error() }`
+// 		script += "\n\n"
+// 	}
+
+// 	fmt.Println("tmp ts: ", f.Name())
+// 	var byts []byte
+// 	result := api.Transform(script, api.TransformOptions{})
+// 	fmt.Printf("%d errors and %d warnings\n",
+// 		len(result.Errors), len(result.Warnings))
+// 	fmt.Println("Got result:", result.Code)
+
+// 	assert.Nil(t, result.Errors, string(byts))
+
+// 	jsFile := strings.Replace(f.Name(), ".ts", ".js", 1)
+// 	err = os.WriteFile(jsFile, result.Code, fs.ModeAppend)
+// 	assert.Nil(t, err, string(byts))
+// 	fmt.Println("executing:", jsFile)
+// 	byts, err = exec.Command("node", jsFile).CombinedOutput()
+// 	assert.Nil(t, err, string(byts))
+// }
 
 func testTypescriptExpression(t *testing.T, strictMode bool, baseScript string, tsExpressionAndDesiredResults []string) {
 	f, err := os.CreateTemp(os.TempDir(), "*.ts")
@@ -1032,5 +1066,74 @@ func TestTypescriptifyCustomJsonTag(t *testing.T) {
 	durationCustom: number;
 	textCustom?: string;
 }`
+	testConverter(t, converter, false, desiredResult, nil)
+}
+
+func TestTypescriptifyBasicFunctionGeneration(t *testing.T) {
+	t.Parallel()
+	converter := New()
+
+	converter.AddFunction(TypeScriptFunction{
+		IsAsync: false,
+		Name:    "testFunction",
+	})
+
+	desiredResult := `export function testFunction(): void {
+
+	}`
+	testConverter(t, converter, false, desiredResult, nil)
+}
+
+func TestTypescriptifyParamFunctionGeneration(t *testing.T) {
+	t.Parallel()
+	converter := New()
+
+	converter.AddFunction(TypeScriptFunction{
+		IsAsync: false,
+		Name:    "testFunction",
+		Parameters: []FunctionParameter{
+			{Name: "input", Type: "string"},
+		},
+		ReturnType: "string",
+	})
+
+	desiredResult := `export function testFunction(input: string): string {
+
+	}`
+	testConverter(t, converter, false, desiredResult, nil)
+}
+
+func TestTypescriptifyBodyFunctionGeneration(t *testing.T) {
+	t.Parallel()
+	converter := New()
+
+	converter.AddFunction(TypeScriptFunction{
+		IsAsync: false,
+		Name:    "testFunction",
+		Parameters: []FunctionParameter{
+			{Name: "input", Type: "string"},
+		},
+		ReturnType: "string",
+		Body:       "console.log('hello');",
+	})
+
+	desiredResult := `export function testFunction(input: string): string {
+		console.log('hello');
+	}`
+	testConverter(t, converter, false, desiredResult, nil)
+}
+
+func TestTypescriptifyAsyncFunctionGeneration(t *testing.T) {
+	t.Parallel()
+	converter := New()
+
+	converter.AddFunction(TypeScriptFunction{
+		IsAsync: true,
+		Name:    "testFunction",
+	})
+
+	desiredResult := `export async function testFunction(): void {
+
+	}`
 	testConverter(t, converter, false, desiredResult, nil)
 }

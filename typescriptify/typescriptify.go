@@ -73,6 +73,19 @@ type EnumType struct {
 	Type reflect.Type
 }
 
+type FunctionParameter struct {
+	Name string
+	Type string
+}
+
+type TypeScriptFunction struct {
+	IsAsync    bool
+	Name       string
+	Parameters []FunctionParameter
+	ReturnType string
+	Body       string
+}
+
 type enumElement struct {
 	value interface{}
 	name  string
@@ -94,6 +107,7 @@ type TypeScriptify struct {
 	enumTypes   []EnumType
 	enums       map[reflect.Type][]enumElement
 	kinds       map[reflect.Kind]string
+	functions   []TypeScriptFunction
 
 	fieldTypeOptions map[reflect.Type]TypeOptions
 
@@ -240,6 +254,11 @@ func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 	return t
 }
 
+func (t *TypeScriptify) AddFunction(funcDef TypeScriptFunction) *TypeScriptify {
+	t.functions = append(t.functions, funcDef)
+	return t
+}
+
 func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
 	t.structTypes = append(t.structTypes, StructType{Type: typeOf})
 	return t
@@ -358,6 +377,53 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 		}
 		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
 	}
+
+	for _, funcDef := range t.functions {
+		typeScriptCode, err := t.convertFunction(depth, funcDef)
+		if err != nil {
+			return "", err
+		}
+		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
+	}
+
+	return result, nil
+}
+
+func (t *TypeScriptify) convertFunction(depth int, funcDef TypeScriptFunction) (string, error) {
+	t.logf(depth, "Converting function %s", funcDef.Name)
+	if funcDef.Name == "" {
+		return "", fmt.Errorf("function has an empty name")
+	}
+
+	// Right now we can spit out multiple defintions for potentially clashing functions
+
+	result := ""
+	// Build the list of parameters to be joined
+	params := []string{}
+	for _, param := range funcDef.Parameters {
+		params = append(
+			params,
+			fmt.Sprintf("%s: %s", param.Name, param.Type),
+		)
+	}
+	asyncString := ""
+	if funcDef.IsAsync {
+		asyncString = "async "
+	}
+
+	if funcDef.ReturnType == "" {
+		funcDef.ReturnType = "void"
+	}
+
+	funcCode := fmt.Sprintf(
+		"export %sfunction %s(%s): %s {\n%s\n}\n",
+		asyncString,
+		funcDef.Name,
+		strings.Join(params, ", "),
+		funcDef.ReturnType,
+		indentLines(funcDef.Body, 1),
+	)
+	result += "\n" + funcCode
 	return result, nil
 }
 
