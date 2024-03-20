@@ -89,6 +89,7 @@ type TypeScriptify struct {
 	CreateInterface   bool
 	CustomJsonTag     string
 	customImports     []string
+	silent            bool
 
 	structTypes []StructType
 	enumTypes   []EnumType
@@ -164,7 +165,16 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 	return fields
 }
 
+func (ts *TypeScriptify) Silent() *TypeScriptify {
+	ts.silent = true
+	return ts
+}
+
 func (ts TypeScriptify) logf(depth int, s string, args ...interface{}) {
+	if ts.silent {
+		return
+	}
+
 	fmt.Printf(strings.Repeat("   ", depth)+s+"\n", args...)
 }
 
