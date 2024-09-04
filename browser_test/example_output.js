@@ -60,7 +60,7 @@ var Person = /** @class */ (function () {
         if (!a) {
             return a;
         }
-        if (a.slice) {
+        if (Array.isArray(a)) {
             return a.map(function (elem) { return _this.convertValues(elem, classs); });
         }
         else if ("object" === typeof a) {
