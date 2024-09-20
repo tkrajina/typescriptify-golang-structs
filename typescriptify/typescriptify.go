@@ -544,6 +544,10 @@ func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) 
 		jsonTagParts := strings.Split(jsonTag, ",")
 		if len(jsonTagParts) > 0 {
 			jsonFieldName = strings.Trim(jsonTagParts[0], t.Indent)
+			//`json:",omitempty"` is valid
+			if jsonFieldName == "" {
+				jsonFieldName = field.Name
+			}
 		}
 		hasOmitEmpty := false
 		ignored := false
