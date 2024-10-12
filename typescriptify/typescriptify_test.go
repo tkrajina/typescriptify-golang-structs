@@ -1034,3 +1034,32 @@ func TestTypescriptifyCustomJsonTag(t *testing.T) {
 }`
 	testConverter(t, converter, false, desiredResult, nil)
 }
+
+type MapArrayValue struct {
+	Name string `json:"name"`
+}
+type StructWithEnumMapArrayStruct struct {
+	Value  string                     `json:"value"`
+	Values map[string][]MapArrayValue `json:"values"`
+}
+
+func TestTypescriptifyWithStructWithEnumMapArrayStruct(t *testing.T) {
+	t.Parallel()
+	converter := New()
+	converter.Prefix = "test_"
+
+	converter.AddType(reflect.TypeOf(StructWithEnumMapArrayStruct{}))
+	converter.AddType(reflect.TypeOf(MapArrayValue{}))
+	converter.CreateInterface = true
+	converter.CreateConstructor = false
+	converter.BackupDir = ""
+
+	desiredResult := `export interface test_StructWithEnumMapArrayStruct {
+       value: string;
+	   values: {[key: string]: test_MapArrayValue[]};
+	}
+	   export interface test_MapArrayValue {
+	   	name: string;
+		}`
+	testConverter(t, converter, false, desiredResult, nil)
+}
