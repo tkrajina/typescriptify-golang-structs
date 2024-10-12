@@ -262,8 +262,7 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	if name, ok := t.types[valueType.Kind()]; ok {
 		valueTypeName = name
 	}
-	isArray := valueType.Kind() == reflect.Array || valueType.Kind() == reflect.Slice
-	if isArray {
+	if valueType.Kind() == reflect.Array || valueType.Kind() == reflect.Slice {
 		valueTypeName = valueType.Elem().Name() + "[]"
 	}
 	if valueType.Kind() == reflect.Ptr {
@@ -278,7 +277,7 @@ func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.Str
 	// 	keyTypeStr = t.prefix + keyType.Name() + t.suffix
 	// }
 
-	if valueType.Kind() == reflect.Struct || (isArray && valueType.Elem().Kind() == reflect.Struct) {
+	if valueType.Kind() == reflect.Struct {
 		t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};", t.indent, fieldName, keyTypeStr, t.prefix+valueTypeName))
 		t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = this.convertValues(source[\"%s\"], %s, true);", t.indent, t.indent, strippedFieldName, strippedFieldName, t.prefix+valueTypeName+t.suffix))
 	} else {
