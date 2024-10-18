@@ -67,6 +67,48 @@ export class Person {
 	testConverter(t, converter, false, desiredResult, nil)
 }
 
+func TestTypescriptifyWithCustomCode(t *testing.T) {
+	t.Parallel()
+	converter := New()
+
+	converter.WithCustomCodeBefore(`"a"
+"b"
+"b"`)
+	converter.WithCustomCodeAfter(`"d"
+"e"
+"f"`)
+	converter.AddType(reflect.TypeOf(Person{}))
+	converter.CreateConstructor = false
+	converter.BackupDir = ""
+
+	desiredResult := `"a"
+"b"
+"b"
+
+
+export class Dummy {
+    something: string;
+}
+export class Address {
+    duration: number;
+    text?: string;
+}
+export class Person {
+    name: string;
+    nicknames: string[];
+    addresses: Address[];
+    address?: Address;
+    metadata: {[key:string]:string};
+    friends: Person[];
+    a: Dummy;
+}
+
+"d"
+"e"
+"f"`
+	testConverter(t, converter, false, desiredResult, nil)
+}
+
 func TestTypescriptifyWithCustomImports(t *testing.T) {
 	t.Parallel()
 	converter := New()

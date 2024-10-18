@@ -89,6 +89,8 @@ type TypeScriptify struct {
 	CreateInterface   bool
 	CustomJsonTag     string
 	customImports     []string
+	customCodeBefore  []string
+	customCodeAfter   []string
 	silent            bool
 
 	structTypes []StructType
@@ -352,6 +354,14 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 		}
 	}
 
+	if len(t.customCodeBefore) > 0 {
+		result += "\n"
+		for _, code := range t.customCodeBefore {
+			result += "\n" + code + "\n"
+		}
+		result += "\n"
+	}
+
 	for _, enumTyp := range t.enumTypes {
 		elements := t.enums[enumTyp.Type]
 		typeScriptCode, err := t.convertEnum(depth, enumTyp.Type, elements)
@@ -368,6 +378,15 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 		}
 		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
 	}
+
+	if len(t.customCodeAfter) > 0 {
+		result += "\n"
+		for _, code := range t.customCodeAfter {
+			result += "\n" + code + "\n"
+		}
+		result += "\n"
+	}
+
 	return result, nil
 }
 
@@ -745,6 +764,14 @@ func (t *TypeScriptify) AddImport(i string) {
 	}
 
 	t.customImports = append(t.customImports, i)
+}
+
+func (t *TypeScriptify) WithCustomCodeBefore(i string) {
+	t.customCodeBefore = append(t.customCodeBefore, i)
+}
+
+func (t *TypeScriptify) WithCustomCodeAfter(i string) {
+	t.customCodeAfter = append(t.customCodeAfter, i)
 }
 
 type typeScriptClassBuilder struct {
