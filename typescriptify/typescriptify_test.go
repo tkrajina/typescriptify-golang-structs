@@ -35,6 +35,7 @@ type Person struct {
 	Nicknames []string  `json:"nicknames"`
 	Addresses []Address `json:"addresses"`
 	Address   *Address  `json:"address"`
+	Address2  *Address  `json:"address2,omitempty"`
 	Metadata  string    `json:"metadata" ts_type:"{[key:string]:string}" ts_transform:"JSON.parse(__VALUE__ || \"{}\")"`
 	Friends   []*Person `json:"friends"`
 	Dummy     Dummy     `json:"a"`
@@ -59,7 +60,8 @@ export class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address?: Address;
+		address: Address;
+		address2?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -132,7 +134,8 @@ export class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address?: Address;
+		address: Address;
+		address2?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -161,7 +164,8 @@ class Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address?: Address;
+		address: Address;
+		address2?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -190,7 +194,8 @@ interface Person {
         name: string;
         nicknames: string[];
 		addresses: Address[];
-		address?: Address;
+		address: Address;
+		address2?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -218,7 +223,8 @@ export class Person {
         name: string;
 		nicknames: string[];
 		addresses: Address[];
-		address?: Address;
+		address: Address;
+		address2?: Address;
 		metadata: {[key:string]:string};
 		friends: Person[];
         a: Dummy;
@@ -259,7 +265,8 @@ class test_Person_test {
     name: string;
     nicknames: string[];
     addresses: test_Address_test[];
-    address?: test_Address_test;
+    address: test_Address_test;
+	address2?: test_Address_test;
     metadata: {[key:string]:string};
     friends: test_Person_test[];
 	a: test_Dummy_test;
@@ -270,6 +277,7 @@ class test_Person_test {
         this.nicknames = source["nicknames"];
         this.addresses = this.convertValues(source["addresses"], test_Address_test);
         this.address = this.convertValues(source["address"], test_Address_test);
+		this.address2 = this.convertValues(source["address2"], test_Address_test);
 		this.metadata = JSON.parse(source["metadata"] || "{}");
 		this.friends = this.convertValues(source["friends"], test_Person_test);
 		this.a = this.convertValues(source["a"], test_Dummy_test);
@@ -794,8 +802,9 @@ export class Person {
     name: string;
     nicknames: string[];
     addresses: Address[];
-    address?: Address;
-    metadata: {[key:string]:string};
+	address: Address;
+	address2?: Address;
+metadata: {[key:string]:string};
     friends: Person[];
     a: Dummy;
 
@@ -805,6 +814,7 @@ export class Person {
         this.nicknames = source["nicknames"];
         this.addresses = this.convertValues(source["addresses"], Address);
         this.address = this.convertValues(source["address"], Address);
+		this.address2 = this.convertValues(source["address2"], Address);
 		this.metadata = JSON.parse(source["metadata"] || "{}");
         this.friends = this.convertValues(source["friends"], Person);
         this.a = this.convertValues(source["a"], Dummy);
@@ -818,7 +828,7 @@ export class Person {
 type WithMap struct {
 	Map        map[string]int      `json:"simpleMap"`
 	MapObjects map[string]Address  `json:"mapObjects"`
-	PtrMap     *map[string]Address `json:"ptrMapObjects"`
+	PtrMap     *map[string]Address `json:"ptrMapObjects,omitempty"`
 }
 
 func TestMaps(t *testing.T) {
@@ -878,7 +888,8 @@ func TestMaps(t *testing.T) {
 func TestPTR(t *testing.T) {
 	t.Parallel()
 	type Person struct {
-		Name *string `json:"name"`
+		Name         *string `json:"name"`
+		OptionalName *string `json:"optionalName,omitempty"`
 	}
 
 	converter := New()
@@ -887,7 +898,8 @@ func TestPTR(t *testing.T) {
 	converter.Add(Person{})
 
 	desiredResult := `export class Person {
-    name?: string;
+    name: string;
+	optionalName?: string;
 }`
 	testConverter(t, converter, true, desiredResult, nil)
 }
@@ -938,7 +950,7 @@ const converter = new Converter();
 class Address {
     street: string;
     number: number;
-    
+
     constructor(a: any) {
         this.street = a["street"];
         this.number = a["number"];
