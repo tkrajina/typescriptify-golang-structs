@@ -35,9 +35,72 @@ type Person struct {
 	Nicknames []string  `json:"nicknames"`
 	Addresses []Address `json:"addresses"`
 	Address   *Address  `json:"address"`
-	Metadata  string    `json:"metadata" ts_type:"{[key:string]:string}" ts_transform:"JSON.parse(__VALUE__ || \"{}\")"`
+	Metadata  string    `json:"metadata" ts_type:"{[key: string]: string}" ts_transform:"JSON.parse(__VALUE__ || \"{}\")"`
 	Friends   []*Person `json:"friends"`
 	Dummy     Dummy     `json:"a"`
+}
+
+type Business struct {
+	Address *Address `json:"address"`
+}
+
+type AddressableSubjects interface {
+	Person | Business | int | map[string]any
+}
+
+type Subject[T AddressableSubjects, U int | string] struct {
+	Info T `json:"info" ts_type:"T"`
+	Id   U `json:"id" ts_type:"U"`
+	ASD map[string]*Person
+}
+
+func TestTypescriptifyWithGenerics(t *testing.T) {
+	t.Parallel()
+	converter := New()
+
+	converter.AddGenericType(
+		Subject[Person, int]{},
+		[]ConstraintInput{{
+			Name: "AddressableSubjects",
+			Members: []any{Person{}, Business{}, 6, map[string]int{}},
+		},
+		{
+			Name: "SubjectId",
+			Members: []any{1, "string"},
+		}},
+	)
+	converter.CreateInterface = true
+	converter.DontExport = true
+	converter.BackupDir = ""
+
+	desiredResult := `interface Dummy {
+        something: string;
+}
+interface Address {
+        duration: number;
+        text?: string;
+}
+interface Person {
+        name: string;
+        nicknames: string[];
+		addresses: Address[];
+		address?: Address;
+		metadata: {[key: string]: string};
+		friends: Person[];
+        a: Dummy;
+}
+interface Business {
+	address?: Address;
+}
+type AddressableSubjects = Person | Business | number | {[key: string]: number};
+type SubjectId = number | string;
+interface Subject<T extends AddressableSubjects, U extends SubjectId> {
+	info: T;
+	id: U;
+	ASD: {[key: string]: Person};
+}`
+
+	testConverter(t, converter, false, desiredResult, nil)
 }
 
 func TestTypescriptifyWithTypes(t *testing.T) {
@@ -60,7 +123,7 @@ export class Person {
         nicknames: string[];
 		addresses: Address[];
 		address?: Address;
-		metadata: {[key:string]:string};
+		metadata: {[key: string]: string};
 		friends: Person[];
         a: Dummy;
 }`
@@ -98,7 +161,7 @@ export class Person {
     nicknames: string[];
     addresses: Address[];
     address?: Address;
-    metadata: {[key:string]:string};
+    metadata: {[key: string]: string};
     friends: Person[];
     a: Dummy;
 }
@@ -133,7 +196,7 @@ export class Person {
         nicknames: string[];
 		addresses: Address[];
 		address?: Address;
-		metadata: {[key:string]:string};
+		metadata: {[key: string]: string};
 		friends: Person[];
         a: Dummy;
 }`
@@ -162,7 +225,7 @@ class Person {
         nicknames: string[];
 		addresses: Address[];
 		address?: Address;
-		metadata: {[key:string]:string};
+		metadata: {[key: string]: string};
 		friends: Person[];
         a: Dummy;
 }`
@@ -191,7 +254,7 @@ interface Person {
         nicknames: string[];
 		addresses: Address[];
 		address?: Address;
-		metadata: {[key:string]:string};
+		metadata: {[key: string]: string};
 		friends: Person[];
         a: Dummy;
 }`
@@ -219,7 +282,7 @@ export class Person {
 		nicknames: string[];
 		addresses: Address[];
 		address?: Address;
-		metadata: {[key:string]:string};
+		metadata: {[key: string]: string};
 		friends: Person[];
         a: Dummy;
 }`
@@ -260,7 +323,7 @@ class test_Person_test {
     nicknames: string[];
     addresses: test_Address_test[];
     address?: test_Address_test;
-    metadata: {[key:string]:string};
+    metadata: {[key: string]: string};
     friends: test_Person_test[];
 	a: test_Dummy_test;
 
@@ -795,7 +858,7 @@ export class Person {
     nicknames: string[];
     addresses: Address[];
     address?: Address;
-    metadata: {[key:string]:string};
+    metadata: {[key: string]: string};
     friends: Person[];
     a: Dummy;
 
@@ -833,7 +896,7 @@ func TestMaps(t *testing.T) {
       export class API_Address {
           duration: number;
           text?: string;
-      
+
           constructor(source: any = {}) {
               if ('string' === typeof source) source = JSON.parse(source);
               this.duration = source["duration"];
@@ -909,7 +972,7 @@ func TestAnonymousPtr(t *testing.T) {
 	desiredResult := `
       export class PersonWithPtrName {
           name: string;
-      
+
           constructor(source: any = {}) {
               if ('string' === typeof source) source = JSON.parse(source);
               this.name = source["name"];
@@ -938,7 +1001,7 @@ const converter = new Converter();
 class Address {
     street: string;
     number: number;
-    
+
     constructor(a: any) {
         this.street = a["street"];
         this.number = a["number"];
@@ -983,7 +1046,7 @@ func TestIgnoredPTR(t *testing.T) {
 	desiredResult := `
       export class PersonWithIgnoredPtr {
           name: string;
-      
+
           constructor(source: any = {}) {
               if ('string' === typeof source) source = JSON.parse(source);
               this.name = source["name"];

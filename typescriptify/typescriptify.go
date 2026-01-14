@@ -3,6 +3,7 @@ package typescriptify
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"reflect"
@@ -78,6 +79,31 @@ type enumElement struct {
 	name  string
 }
 
+var GenericVarNames = []string{
+	"T",
+	"U",
+	"V",
+	"W",
+	"X",
+	"Y",
+	"Z",
+}
+
+type GenericConstraint struct {
+	Name string
+	Members []reflect.Type
+}
+
+type ConstraintInput struct {
+	Name string
+	Members []any
+}
+
+type GenericType struct {
+	StructType
+	Constraints []GenericConstraint
+}
+
 type TypeScriptify struct {
 	Prefix            string
 	Suffix            string
@@ -93,10 +119,11 @@ type TypeScriptify struct {
 	customCodeAfter   []string
 	silent            bool
 
-	structTypes []StructType
-	enumTypes   []EnumType
-	enums       map[reflect.Type][]enumElement
-	kinds       map[reflect.Kind]string
+	structTypes  []StructType
+	enumTypes    []EnumType
+	genericTypes map[string]GenericType
+	enums        map[reflect.Type][]enumElement
+	kinds        map[reflect.Kind]string
 
 	fieldTypeOptions map[reflect.Type]TypeOptions
 
@@ -104,32 +131,30 @@ type TypeScriptify struct {
 	alreadyConverted map[reflect.Type]bool
 }
 
+var primitiveKindsMapping = map[reflect.Kind]string {
+	reflect.Bool: "boolean",
+	reflect.Interface: "any",
+	reflect.Int: "number",
+	reflect.Int8: "number",
+	reflect.Int16: "number",
+	reflect.Int32: "number",
+	reflect.Int64: "number",
+	reflect.Uint: "number",
+	reflect.Uint8: "number",
+	reflect.Uint16: "number",
+	reflect.Uint32: "number",
+	reflect.Uint64: "number",
+	reflect.Float32: "number",
+	reflect.Float64: "number",
+	reflect.String: "string",
+}
+
 func New() *TypeScriptify {
 	result := new(TypeScriptify)
 	result.Indent = "\t"
 	result.BackupDir = "."
 
-	kinds := make(map[reflect.Kind]string)
-
-	kinds[reflect.Bool] = "boolean"
-	kinds[reflect.Interface] = "any"
-
-	kinds[reflect.Int] = "number"
-	kinds[reflect.Int8] = "number"
-	kinds[reflect.Int16] = "number"
-	kinds[reflect.Int32] = "number"
-	kinds[reflect.Int64] = "number"
-	kinds[reflect.Uint] = "number"
-	kinds[reflect.Uint8] = "number"
-	kinds[reflect.Uint16] = "number"
-	kinds[reflect.Uint32] = "number"
-	kinds[reflect.Uint64] = "number"
-	kinds[reflect.Float32] = "number"
-	kinds[reflect.Float64] = "number"
-
-	kinds[reflect.String] = "string"
-
-	result.kinds = kinds
+	result.kinds = maps.Clone(primitiveKindsMapping)
 
 	result.Indent = "    "
 	result.CreateFromMethod = false
@@ -252,38 +277,80 @@ func (t *TypeScriptify) Add(obj interface{}) *TypeScriptify {
 	return t
 }
 
+func (t *TypeScriptify) AddGenericType(instance any, constraints []ConstraintInput) *TypeScriptify {
+	if t.genericTypes == nil {
+		t.genericTypes = make(map[string]GenericType)
+	}
+	if instance == nil || len(constraints) == 0 {
+		panic("generic variants and constraints cannot be empty")
+	}
+
+	genericType := GenericType{}
+	genericType.Type = reflect.TypeOf(instance)
+	genericType.Constraints = []GenericConstraint{}
+
+	for _, constrain := range constraints {
+		c := GenericConstraint{Name: constrain.Name}
+		for _, member := range constrain.Members {
+			mType := reflect.TypeOf(member)
+			c.Members = append(c.Members, mType)
+			kind := mType.Kind()
+			if kind == reflect.Struct || kind == reflect.Interface {
+				t.Add(mType)
+			}
+		}
+		genericType.Constraints = append(genericType.Constraints, c)
+	}
+
+	nameRaw := genericType.Type.Name()
+	name := strings.Split(nameRaw, "[")[0]
+	t.genericTypes[name] = genericType
+	return t
+}
+
 func (t *TypeScriptify) AddType(typeOf reflect.Type) *TypeScriptify {
 	t.structTypes = append(t.structTypes, StructType{Type: typeOf})
 	return t
 }
 
-func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.StructField) {
-	keyType := field.Type.Key()
-	valueType := field.Type.Elem()
-	valueTypeName := valueType.Name()
-	if name, ok := t.types[valueType.Kind()]; ok {
-		valueTypeName = name
-	}
-	if valueType.Kind() == reflect.Array || valueType.Kind() == reflect.Slice {
-		valueTypeName = valueType.Elem().Name() + "[]"
-	}
-	if valueType.Kind() == reflect.Ptr {
-		valueTypeName = valueType.Elem().Name()
-	}
-	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
+func getMapTsType(val reflect.Type, prefix, suffix string) (string, string) {
+	value := ""
+	valueElem := val.Elem()
 
-	keyTypeStr := keyType.Name()
-	// Key should always be string, no need for this:
-	// _, isSimple := t.types[keyType.Kind()]
-	// if !isSimple {
-	// 	keyTypeStr = t.prefix + keyType.Name() + t.suffix
-	// }
+	if valueElem.Kind() == reflect.Pointer {
+		valueElem = valueElem.Elem()
+	}
+
+	kind := valueElem.Kind()
+	key := val.Key().Name()
+
+	switch kind {
+		case reflect.Array, reflect.Slice:
+			value = valueElem.Name() + "[]"
+		case reflect.Struct:
+			value = valueElem.Name()
+		default:
+			value = primitiveKindsMapping[kind]
+	}
+
+	if kind == reflect.Struct {
+		value = prefix + value + suffix
+		return fmt.Sprintf("{[key: %s]: %s}", key, value), value
+	} else {
+		return fmt.Sprintf("{[key: %s]: %s}", key, value), value
+	}
+}
+
+func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.StructField) {
+	valueType := field.Type.Elem()
+	strippedFieldName := strings.ReplaceAll(fieldName, "?", "")
+	mapTypeStr, valueTypeName := getMapTsType(field.Type, t.prefix, t.suffix)
 
 	if valueType.Kind() == reflect.Struct {
-		t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};", t.indent, fieldName, keyTypeStr, t.prefix+valueTypeName))
-		t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = this.convertValues(source[\"%s\"], %s, true);", t.indent, t.indent, strippedFieldName, strippedFieldName, t.prefix+valueTypeName+t.suffix))
+		t.fields = append(t.fields, fmt.Sprintf("%s%s: %s;", t.indent, fieldName, mapTypeStr))
+		t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = this.convertValues(source[\"%s\"], %s, true);", t.indent, t.indent, strippedFieldName, strippedFieldName, valueTypeName))
 	} else {
-		t.fields = append(t.fields, fmt.Sprintf("%s%s: {[key: %s]: %s};", t.indent, fieldName, keyTypeStr, valueTypeName))
+		t.fields = append(t.fields, fmt.Sprintf("%s%s: %s;", t.indent, fieldName, mapTypeStr))
 		t.constructorBody = append(t.constructorBody, fmt.Sprintf("%s%sthis.%s = source[\"%s\"];", t.indent, t.indent, strippedFieldName, strippedFieldName))
 	}
 }
@@ -379,6 +446,14 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
 	}
 
+	for _, genericTyp := range t.genericTypes {
+		typeScriptCode, err := t.convertGenericType(depth, genericTyp, customCode)
+		if err != nil {
+			return "", err
+		}
+		result += "\n" + strings.Trim(typeScriptCode, " "+t.Indent+"\r\n")
+	}
+
 	if len(t.customCodeAfter) > 0 {
 		result += "\n"
 		for _, code := range t.customCodeAfter {
@@ -386,6 +461,33 @@ func (t *TypeScriptify) Convert(customCode map[string]string) (string, error) {
 		}
 		result += "\n"
 	}
+
+	return result, nil
+}
+
+func (t *TypeScriptify) convertGenericType(depth int, gen GenericType, customCode map[string]string) (string, error) {
+	result := ""
+
+	for _, constrain := range gen.Constraints {
+		memberList := []string{}
+		for _, member := range constrain.Members {
+			if member.Kind() == reflect.Struct || member.Kind() == reflect.Interface {
+				memberList = append(memberList, member.Name())
+			} else if member.Kind() == reflect.Map {
+				mapMember, _ := getMapTsType(member, t.Prefix, t.Suffix)
+				memberList = append(memberList, mapMember)
+			} else {
+				memberList = append(memberList, t.kinds[member.Kind()])
+			}
+		}
+		result += fmt.Sprintf("type %s = %s;\n", constrain.Name, strings.Join(memberList, " | "))
+	}
+
+	tsCode, err := t.convertType(depth, gen.Type, customCode)
+	if err != nil {
+		return result, err
+	}
+	result += tsCode
 
 	return result, nil
 }
@@ -412,7 +514,7 @@ func loadCustomCode(fileName string) (map[string]string, error) {
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmedLine, "//[") && strings.HasSuffix(trimmedLine, ":]") {
-			currentName = strings.Replace(strings.Replace(trimmedLine, "//[", "", -1), ":]", "", -1)
+			currentName = strings.ReplaceAll(strings.ReplaceAll(trimmedLine, "//[", ""), ":]", "")
 			currentValue = ""
 		} else if trimmedLine == "//[end]" {
 			result[currentName] = strings.TrimRight(currentValue, " \t\r\n")
@@ -478,9 +580,6 @@ func (t TypeScriptify) ConvertToFile(fileName string) error {
 		return err
 	}
 	if _, err := f.WriteString(converted); err != nil {
-		return err
-	}
-	if err != nil {
 		return err
 	}
 
@@ -588,6 +687,26 @@ func (t *TypeScriptify) getJSONFieldName(field reflect.StructField, isPtr bool) 
 	return jsonFieldName
 }
 
+func (t *TypeScriptify) solveEntityName(typeOf reflect.Type) string {
+	name := typeOf.Name()
+
+	if strings.Contains(name, "[") {
+		nameParts := strings.Split(name, "[")
+		gen := t.genericTypes[nameParts[0]]
+		constrains := []string{}
+		for cId, cons := range gen.Constraints {
+			if cId > len(GenericVarNames) - 1 {
+				panic("run out of generic names to use")
+			}
+			def := fmt.Sprintf("%s extends %s", GenericVarNames[cId], cons.Name)
+			constrains = append(constrains, def)
+		}
+		name = fmt.Sprintf("%s<%s>", nameParts[0], strings.Join(constrains, ", "))
+	}
+
+	return t.Prefix + name + t.Suffix
+}
+
 func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode map[string]string) (string, error) {
 	if _, found := t.alreadyConverted[typeOf]; found { // Already converted
 		return "", nil
@@ -596,7 +715,7 @@ func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode m
 
 	t.alreadyConverted[typeOf] = true
 
-	entityName := t.Prefix + typeOf.Name() + t.Suffix
+	entityName := t.solveEntityName(typeOf)
 	result := ""
 	if t.CreateInterface {
 		result += fmt.Sprintf("interface %s {\n", entityName)
@@ -818,7 +937,7 @@ func (t *typeScriptClassBuilder) AddSimpleField(fieldName string, field reflect.
 			t.addInitializerFieldLine(strippedFieldName, fmt.Sprintf("source[\"%s\"]", strippedFieldName))
 		} else {
 			val := fmt.Sprintf(`source["%s"]`, strippedFieldName)
-			expression := strings.Replace(opts.TSTransform, "__VALUE__", val, -1)
+			expression := strings.ReplaceAll(opts.TSTransform, "__VALUE__", val)
 			t.addInitializerFieldLine(strippedFieldName, expression)
 		}
 		return nil

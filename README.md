@@ -305,7 +305,7 @@ If you only want to change `ts_transform` but not `ts_type`, you can pass an emp
 
 ## Enums
 
-There are two ways to create enums. 
+There are two ways to create enums.
 
 ### Enums with TSName()
 
@@ -390,7 +390,65 @@ export class Holliday {
 }
 ```
 
+## Generics
+
+The library supports converting Go generics to TypeScript generic types. You can define a struct with type parameters and specify constraints for those parameters.
+
+Example input structs:
+
+```go
+type Person struct {
+    Name string `json:"name"`
+}
+
+type Business struct {
+    Name string `json:"name"`
+}
+
+type AddressableSubjects interface {
+	Person | Business
+}
+
+type Subject[T AddressableSubjects] struct {
+    Info T `json:"info" ts_type:"T"`
+}
+```
+
+To convert generics, use the `AddGenericType()` method with constraints:
+
+```go
+converter := typescriptify.New()
+converter.CreateInterface = true
+
+converter.AddGenericType(
+    Subject[Person]{},
+    []typescriptify.ConstraintInput{{
+        Name: "AddressableSubjects",
+        Members: []any{Person{}, Business{}},
+    }},
+)
+
+err := converter.ConvertToFile("ts/models.ts")
+if err != nil {
+    panic(err.Error())
+}
+```
+
+Generated TypeScript:
+
+```typescript
+export interface Person {
+    name: string;
+}
+export interface Business {
+    name: string;
+}
+type AddressableSubjects = Person | Business;
+export interface Subject<T extends AddressableSubjects> {
+    info: T;
+}
+```
+
 ## License
 
 This library is licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-
