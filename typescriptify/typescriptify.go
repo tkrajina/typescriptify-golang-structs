@@ -3,7 +3,6 @@ package typescriptify
 import (
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"path"
 	"reflect"
@@ -154,7 +153,11 @@ func New() *TypeScriptify {
 	result.Indent = "\t"
 	result.BackupDir = "."
 
-	result.kinds = maps.Clone(primitiveKindsMapping)
+	kinds := make(map[reflect.Kind]string, len(primitiveKindsMapping))
+	for k, v := range primitiveKindsMapping {
+		kinds[k] = v
+	}
+	result.kinds = kinds
 
 	result.Indent = "    "
 	result.CreateFromMethod = false
