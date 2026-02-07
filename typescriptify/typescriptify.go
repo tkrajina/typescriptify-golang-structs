@@ -89,12 +89,12 @@ var GenericVarNames = []string{
 }
 
 type GenericConstraint struct {
-	Name string
+	Name    string
 	Members []reflect.Type
 }
 
 type ConstraintInput struct {
-	Name string
+	Name    string
 	Members []any
 }
 
@@ -130,22 +130,22 @@ type TypeScriptify struct {
 	alreadyConverted map[reflect.Type]bool
 }
 
-var primitiveKindsMapping = map[reflect.Kind]string {
-	reflect.Bool: "boolean",
+var primitiveKindsMapping = map[reflect.Kind]string{
+	reflect.Bool:      "boolean",
 	reflect.Interface: "any",
-	reflect.Int: "number",
-	reflect.Int8: "number",
-	reflect.Int16: "number",
-	reflect.Int32: "number",
-	reflect.Int64: "number",
-	reflect.Uint: "number",
-	reflect.Uint8: "number",
-	reflect.Uint16: "number",
-	reflect.Uint32: "number",
-	reflect.Uint64: "number",
-	reflect.Float32: "number",
-	reflect.Float64: "number",
-	reflect.String: "string",
+	reflect.Int:       "number",
+	reflect.Int8:      "number",
+	reflect.Int16:     "number",
+	reflect.Int32:     "number",
+	reflect.Int64:     "number",
+	reflect.Uint:      "number",
+	reflect.Uint8:     "number",
+	reflect.Uint16:    "number",
+	reflect.Uint32:    "number",
+	reflect.Uint64:    "number",
+	reflect.Float32:   "number",
+	reflect.Float64:   "number",
+	reflect.String:    "string",
 }
 
 func New() *TypeScriptify {
@@ -328,20 +328,18 @@ func getMapTsType(val reflect.Type, prefix, suffix string) (string, string) {
 	key := val.Key().Name()
 
 	switch kind {
-		case reflect.Array, reflect.Slice:
-			value = valueElem.Name() + "[]"
-		case reflect.Struct:
-			value = valueElem.Name()
-		default:
-			value = primitiveKindsMapping[kind]
+	case reflect.Array, reflect.Slice:
+		value = valueElem.Name() + "[]"
+	case reflect.Struct:
+		value = valueElem.Name()
+	default:
+		value = primitiveKindsMapping[kind]
 	}
 
 	if kind == reflect.Struct {
 		value = prefix + value + suffix
-		return fmt.Sprintf("{[key: %s]: %s}", key, value), value
-	} else {
-		return fmt.Sprintf("{[key: %s]: %s}", key, value), value
 	}
+	return fmt.Sprintf("{[key: %s]: %s}", key, value), value
 }
 
 func (t *typeScriptClassBuilder) AddMapField(fieldName string, field reflect.StructField) {
@@ -698,7 +696,7 @@ func (t *TypeScriptify) solveEntityName(typeOf reflect.Type) string {
 		gen := t.genericTypes[nameParts[0]]
 		constrains := []string{}
 		for cId, cons := range gen.Constraints {
-			if cId > len(GenericVarNames) - 1 {
+			if cId > len(GenericVarNames)-1 {
 				panic("run out of generic names to use")
 			}
 			def := fmt.Sprintf("%s extends %s", GenericVarNames[cId], cons.Name)

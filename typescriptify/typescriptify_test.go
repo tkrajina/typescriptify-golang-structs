@@ -51,7 +51,7 @@ type AddressableSubjects interface {
 type Subject[T AddressableSubjects, U int | string] struct {
 	Info T `json:"info" ts_type:"T"`
 	Id   U `json:"id" ts_type:"U"`
-	ASD map[string]*Person
+	ASD  map[string]*Person
 }
 
 func TestTypescriptifyWithGenerics(t *testing.T) {
@@ -61,13 +61,13 @@ func TestTypescriptifyWithGenerics(t *testing.T) {
 	converter.AddGenericType(
 		Subject[Person, int]{},
 		[]ConstraintInput{{
-			Name: "AddressableSubjects",
+			Name:    "AddressableSubjects",
 			Members: []any{Person{}, Business{}, 6, map[string]int{}},
 		},
-		{
-			Name: "SubjectId",
-			Members: []any{1, "string"},
-		}},
+			{
+				Name:    "SubjectId",
+				Members: []any{1, "string"},
+			}},
 	)
 	converter.CreateInterface = true
 	converter.DontExport = true
