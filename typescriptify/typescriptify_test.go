@@ -3,6 +3,7 @@ package typescriptify
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
@@ -987,6 +988,70 @@ func TestIgnoredPTR(t *testing.T) {
           constructor(source: any = {}) {
               if ('string' === typeof source) source = JSON.parse(source);
               this.name = source["name"];
+          }
+      }
+`
+	testConverter(t, converter, true, desiredResult, nil)
+}
+
+type IgnoredEmbeddedStruct struct {
+	Secret string `json:"secret"`
+}
+
+type StructWithIgnoredEmbedded struct {
+	Name                  string `json:"name"`
+	IgnoredEmbeddedStruct `json:"-"`
+}
+
+type StructWithIgnoredEmbeddedPtr struct {
+	Name                   string `json:"name"`
+	*IgnoredEmbeddedStruct `json:"-"`
+}
+
+type ConfigWithHttpClient struct {
+	URL          string       `json:"url"`
+	APIKey       string       `json:"api_key"`
+	*http.Client `json:"-"`
+}
+
+type WrapperWithConfig struct {
+	*ConfigWithHttpClient
+}
+
+func TestIgnoredEmbeddedStruct(t *testing.T) {
+	t.Parallel()
+
+	converter := New()
+	converter.BackupDir = ""
+	converter.Add(StructWithIgnoredEmbedded{})
+	converter.Add(StructWithIgnoredEmbeddedPtr{})
+	converter.Add(WrapperWithConfig{})
+
+	desiredResult := `
+      export class StructWithIgnoredEmbedded {
+          name: string;
+      
+          constructor(source: any = {}) {
+              if ('string' === typeof source) source = JSON.parse(source);
+              this.name = source["name"];
+          }
+      }
+      export class StructWithIgnoredEmbeddedPtr {
+          name: string;
+      
+          constructor(source: any = {}) {
+              if ('string' === typeof source) source = JSON.parse(source);
+              this.name = source["name"];
+          }
+      }
+      export class WrapperWithConfig {
+          url: string;
+          api_key: string;
+      
+          constructor(source: any = {}) {
+              if ('string' === typeof source) source = JSON.parse(source);
+              this.url = source["url"];
+              this.api_key = source["api_key"];
           }
       }
 `
