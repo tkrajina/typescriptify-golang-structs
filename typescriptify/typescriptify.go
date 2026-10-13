@@ -138,7 +138,7 @@ func New() *TypeScriptify {
 	return result
 }
 
-func deepFields(typeOf reflect.Type) []reflect.StructField {
+func deepFields(typeOf reflect.Type, customJsonTag ...string) []reflect.StructField {
 	fields := make([]reflect.StructField, 0)
 
 	if typeOf.Kind() == reflect.Ptr {
@@ -149,16 +149,26 @@ func deepFields(typeOf reflect.Type) []reflect.StructField {
 		return fields
 	}
 
+	tag := "json"
+	if len(customJsonTag) > 0 && customJsonTag[0] != "" {
+		tag = customJsonTag[0]
+	}
+
 	for i := 0; i < typeOf.NumField(); i++ {
 		f := typeOf.Field(i)
+
+		tagVal := f.Tag.Get(tag)
+		if tagVal == "-" || strings.HasPrefix(tagVal, "-,") || f.Tag.Get("ts_ignore") == "true" {
+			continue
+		}
 
 		kind := f.Type.Kind()
 		if f.Anonymous && kind == reflect.Struct {
 			//fmt.Println(v.Interface())
-			fields = append(fields, deepFields(f.Type)...)
+			fields = append(fields, deepFields(f.Type, tag)...)
 		} else if f.Anonymous && kind == reflect.Ptr && f.Type.Elem().Kind() == reflect.Struct {
 			//fmt.Println(v.Interface())
-			fields = append(fields, deepFields(f.Type.Elem())...)
+			fields = append(fields, deepFields(f.Type.Elem(), tag)...)
 		} else {
 			fields = append(fields, f)
 		}
@@ -613,7 +623,7 @@ func (t *TypeScriptify) convertType(depth int, typeOf reflect.Type, customCode m
 		suffix: t.Suffix,
 	}
 
-	fields := deepFields(typeOf)
+	fields := deepFields(typeOf, t.CustomJsonTag)
 	for _, field := range fields {
 		isPtr := field.Type.Kind() == reflect.Ptr
 		if isPtr {
